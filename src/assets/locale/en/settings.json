@@ -18,6 +18,14 @@
           "dark": "Dark"
         }
       },
+      "defaultCopilotPrompt": {
+        "label": "Default Prompt for SidePanel (Copilot)",
+        "placeholder": "Select a prompt"
+      },
+      "defaultWebUIPrompt": {
+        "label": "Default Prompt for Web UI",
+        "placeholder": "Select a prompt"
+      },
       "copilotResumeLastChat": {
         "label": "Resume the last chat when opening the SidePanel (Copilot)"
       },
@@ -48,6 +56,9 @@
       "openReasoning": {
         "label": "Open Reasoning Collapse by default"
       },
+      "defaultThinkingMode": {
+        "label": "Show Thinking Mode State in Forms"
+      },
       "userChatBubble": {
         "label": "Use Chat Bubble for User Messages"
       },
@@ -62,6 +73,25 @@
       },
       "tabMentionsEnabled": {
         "label": "Enable Tab Mentions (@tab)"
+      },
+      "pasteLargeTextAsFile": {
+        "label": "Paste Large Text as File"
+      },
+      "ocrLanguage": {
+        "label": "Default OCR Language",
+        "placeholder": "Select an OCR language"
+      },
+      "sidepanelTemporaryChat": {
+        "label": "Enable Temporary Chat in SidePanel by default"
+      },
+      "webuiTemporaryChat": {
+        "label": "Enable Temporary Chat in Web UI by default"
+      },
+      "removeReasoningTagFromCopy": {
+        "label": "Remove Reasoning Tag from Copied Text"
+      },
+      "youtubeAutoSummarize": {
+        "label": "Show the 'Summarize' button on YouTube videos."
       }
     },
     "sidepanelRag": {
@@ -224,6 +254,8 @@
     "notification": {
       "pullModel": "Pulling Model",
       "pullModelDescription": "Pulling {{modelName}} model. For more details, check the extension icon.",
+      "cancellingDownload": "Cancelling Download",
+      "cancellingDownloadDescription": "Model download is being cancelled...",
       "success": "Success",
       "error": "Error",
       "successDescription": "Successfully pulled the model",

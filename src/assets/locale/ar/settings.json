@@ -62,7 +62,14 @@
       },
       "tabMentionsEnabled": {
         "label": "تمكين إشارات التبويب (@tab)"
-      }    },
+      },
+      "pasteLargeTextAsFile": {
+        "label": "لصق النص الكبير كملف"
+      },
+      "sidepanelTemporaryChat": {
+        "label": "تمكين المحادثة المؤقتة في اللوحة الجانبية بشكل افتراضي"
+      }
+    },
     "sidepanelRag": {
       "heading": "إعدادات الاسترجاع",
       "ragEnabled": {

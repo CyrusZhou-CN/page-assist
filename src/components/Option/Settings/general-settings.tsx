@@ -9,9 +9,23 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { SystemSettings } from "./system-settings"
 import { SSTSettings } from "./sst-settings"
 import { BetaTag } from "@/components/Common/Beta"
+import { getDefaultOcrLanguage, ocrLanguages } from "@/data/ocr-language"
+import { Storage } from "@plasmohq/storage"
+import { useQuery } from "@tanstack/react-query"
+import { getAllPrompts, getAllPromptsSystem } from "@/db/dexie/helpers"
 
 export const GeneralSettings = () => {
   const [userChatBubble, setUserChatBubble] = useStorage("userChatBubble", true)
+
+  const [defaultCopilotPrompt, setDefaultCopilotPrompt] = useStorage(
+    "defaultCopilotPrompt",
+    undefined
+  )
+
+  const [defaultWebUIPrompt, setDefaultWebUIPrompt] = useStorage(
+    "defaultWebUIPrompt",
+    undefined
+  )
 
   const [copilotResumeLastChat, setCopilotResumeLastChat] = useStorage(
     "copilotResumeLastChat",
@@ -57,6 +71,11 @@ export const GeneralSettings = () => {
 
   const [openReasoning, setOpenReasoning] = useStorage("openReasoning", false)
 
+  const [defaultThinkingMode, setDefaultThinkingMode] = useStorage(
+    "defaultThinkingMode",
+    false
+  )
+
   const [useMarkdownForUserMessage, setUseMarkdownForUserMessage] = useStorage(
     "useMarkdownForUserMessage",
     false
@@ -66,10 +85,47 @@ export const GeneralSettings = () => {
     "tabMentionsEnabled",
     false
   )
+  const [pasteLargeTextAsFile, setPasteLargeTextAsFile] = useStorage(
+    "pasteLargeTextAsFile",
+    false
+  )
+
+  const [defaultOCRLanguage, setDefaultOCRLanguage] = useStorage(
+    "defaultOCRLanguage",
+    getDefaultOcrLanguage()
+  )
+
+  const [sidepanelTemporaryChat, setSidepanelTemporaryChat] = useStorage(
+    "sidepanelTemporaryChat",
+    false
+  )
+
+  const [webuiTemporaryChat, setWebuiTemporaryChat] = useStorage(
+    "webuiTemporaryChat",
+    false
+  )
+
+  const [removeReasoningTagFromCopy, setRemoveReasoningTagFromCopy] =
+    useStorage("removeReasoningTagFromCopy", true)
+
+  const [youtubeAutoSummarize, setYoutubeAutoSummarize] = useStorage(
+    {
+      key: "youtubeAutoSummarize",
+      instance: new Storage({
+        area: "local"
+      })
+    },
+    false
+  )
 
   const { mode, toggleDarkMode } = useDarkMode()
   const { t } = useTranslation("settings")
   const { changeLocale, locale, supportLanguage } = useI18n()
+
+  const { data: prompts } = useQuery({
+    queryKey: ["getAllPromptsForSettings"],
+    queryFn: getAllPromptsSystem
+  })
 
   return (
     <dl className="flex flex-col space-y-6 text-sm">
@@ -101,6 +157,7 @@ export const GeneralSettings = () => {
           }}
         />
       </div>
+
       <div className="flex flex-row justify-between">
         <div className="inline-flex items-center gap-2">
           <span className="text-gray-700   dark:text-neutral-50">
@@ -263,7 +320,7 @@ export const GeneralSettings = () => {
         />
       </div>
 
-       <div className="flex flex-row justify-between">
+      <div className="flex flex-row justify-between">
         <div className="inline-flex items-center gap-2">
           <span className="text-gray-700   dark:text-neutral-50">
             {t("generalSettings.settings.copyAsFormattedText.label")}
@@ -287,6 +344,163 @@ export const GeneralSettings = () => {
         <Switch
           checked={tabMentionsEnabled}
           onChange={(checked) => setTabMentionsEnabled(checked)}
+        />
+      </div>
+      <div className="flex flex-row justify-between">
+        <div className="inline-flex items-center gap-2">
+          <span className="text-gray-700   dark:text-neutral-50">
+            {t("generalSettings.settings.pasteLargeTextAsFile.label")}
+          </span>
+        </div>
+
+        <Switch
+          checked={pasteLargeTextAsFile}
+          onChange={(checked) => setPasteLargeTextAsFile(checked)}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <span className="text-gray-700   dark:text-neutral-50">
+          {t("generalSettings.settings.ocrLanguage.label")}
+        </span>
+
+        <Select
+          placeholder={t("generalSettings.settings.ocrLanguage.placeholder")}
+          showSearch
+          style={{ width: "200px" }}
+          options={ocrLanguages}
+          value={defaultOCRLanguage}
+          filterOption={(input, option) =>
+            option!.label.toLowerCase().indexOf(input.toLowerCase()) >= 0 ||
+            option!.value.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          }
+          onChange={(value) => {
+            setDefaultOCRLanguage(value)
+          }}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <span className="text-gray-700 dark:text-neutral-50 ">
+          {t("generalSettings.settings.sidepanelTemporaryChat.label")}
+        </span>
+
+        <Switch
+          checked={sidepanelTemporaryChat}
+          onChange={(checked) => setSidepanelTemporaryChat(checked)}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <span className="text-gray-700 dark:text-neutral-50 ">
+          {t("generalSettings.settings.removeReasoningTagFromCopy.label")}
+        </span>
+
+        <Switch
+          checked={removeReasoningTagFromCopy}
+          onChange={(checked) => setRemoveReasoningTagFromCopy(checked)}
+        />
+      </div>
+
+      {!isFireFox && (
+        <div className="flex flex-row justify-between">
+          <div className="inline-flex items-center gap-2">
+            <BetaTag />
+            <span className="text-gray-700 dark:text-neutral-50 ">
+              {t("generalSettings.settings.youtubeAutoSummarize.label")}
+            </span>
+          </div>
+
+          <Switch
+            checked={youtubeAutoSummarize}
+            onChange={(checked) => setYoutubeAutoSummarize(checked)}
+          />
+        </div>
+      )}
+
+      <div className="flex flex-row justify-between">
+        <span className="text-gray-700 dark:text-neutral-50 ">
+          {t("generalSettings.settings.webuiTemporaryChat.label")}
+        </span>
+
+        <Switch
+          checked={webuiTemporaryChat}
+          onChange={(checked) => setWebuiTemporaryChat(checked)}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <span className="text-gray-700   dark:text-neutral-50">
+          {t("generalSettings.settings.defaultCopilotPrompt.label")}
+        </span>
+
+        <Select
+          placeholder={t(
+            "generalSettings.settings.defaultCopilotPrompt.placeholder"
+          )}
+          allowClear
+          showSearch
+          style={{ width: "200px" }}
+          options={
+            prompts
+              ? prompts.map((prompt) => ({
+                  key: prompt.id,
+                  value: prompt.id,
+                  label: prompt.title
+                }))
+              : []
+          }
+          value={defaultCopilotPrompt || undefined}
+          filterOption={(input, option) =>
+            option!.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          }
+          onChange={(value) => {
+            setDefaultCopilotPrompt(value || null)
+          }}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <span className="text-gray-700   dark:text-neutral-50">
+          {t("generalSettings.settings.defaultWebUIPrompt.label")}
+        </span>
+
+        <Select
+          placeholder={t(
+            "generalSettings.settings.defaultWebUIPrompt.placeholder"
+          )}
+          allowClear
+          showSearch
+          style={{ width: "200px" }}
+          options={
+            prompts
+              ? prompts.map((prompt) => ({
+                  key: prompt.id,
+                  value: prompt.id,
+                  label: prompt.title
+                }))
+              : []
+          }
+          value={defaultWebUIPrompt || undefined}
+          filterOption={(input, option) =>
+            option!.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          }
+          onChange={(value) => {
+            setDefaultWebUIPrompt(value || null)
+          }}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <div className="inline-flex items-center gap-2">
+          <span className="text-gray-700   dark:text-neutral-50">
+            {t("generalSettings.settings.defaultThinkingMode.label")}
+          </span>
+        </div>
+
+        <Switch
+          checked={defaultThinkingMode}
+          onChange={(checked) => setDefaultThinkingMode(checked)}
         />
       </div>
 

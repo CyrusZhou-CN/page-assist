@@ -1,4 +1,4 @@
-export const SUPPORTED_SERACH_PROVIDERS = [
+export const SUPPORTED_SEARCH_PROVIDERS = [
     {
         label: "Google",
         value: "google"
@@ -50,5 +50,13 @@ export const SUPPORTED_SERACH_PROVIDERS = [
     {
         label: "Firecrawl",
         value: "firecrawl"
+    },
+    {
+        label: "Ollama Web search",
+        value: "ollama-search"
+    },
+    {
+        label: "Kagi Search API*",
+        value: "kagi-api",
     }
 ]

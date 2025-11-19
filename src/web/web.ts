@@ -14,6 +14,8 @@ import { stractSearch } from "./search-engines/stract"
 import { startpageSearch } from "./search-engines/startpage"
 import { exaAPISearch } from "./search-engines/exa"
 import { firecrawlAPISearch } from "./search-engines/firecrawl"
+import { ollamaAPISearch } from "./search-engines/ollama"
+import { kagiAPISearch } from "./search-engines/kagi-api"
 
 interface ProviderResults {
   url: any
@@ -62,6 +64,10 @@ const searchWeb = (provider: string, query: string) => {
       return exaAPISearch(query)
     case "firecrawl":
       return firecrawlAPISearch(query)
+    case "ollama-search":
+      return ollamaAPISearch(query)
+    case "kagi-api":
+      return kagiAPISearch(query)
     default:
       return webGoogleSearch(query)
   }
@@ -97,30 +103,32 @@ export const getSystemPromptForWeb = async (query: string, returnSearchResults: 
     let searchOnProviders: SearchProviderResult | [] = []
 
     const isVisitSpecificWebsite = await getIsVisitSpecificWebsite()
+    let search_results: string = ""
 
     if (isVisitSpecificWebsite && websiteVisit.hasUrl) {
       const url = websiteVisit.url
       const queryWithoutUrl = websiteVisit.queryWithouUrls
       searchOnAWebSite = await processSingleWebsite(url, queryWithoutUrl)
+      for (const result of searchOnAWebSite) {
+        search_results += `<result source="${result.url}" id="0">${result?.content}</result>`
+        search_results += (`\n`)
+      }
     } else {
       const searchProvider = await getSearchProvider()
       searchOnProviders = await searchWeb(searchProvider, query)
-    }
-
-    let search_results: string = ""
-
-    if ('answer' in searchOnProviders) {
-      search_results += `<result id="0">${searchOnProviders.answer}</result>`
-      search_results += (`\n`)
-    } else {
-      search_results = searchOnProviders.map((result: ProviderResults, idx) =>
-        `<result source="${result.url}" id="${idx}">${result?.content}</result>`
-      )
-        .join("\n")
+      if ('answer' in searchOnProviders) {
+        search_results += `<result id="0">${searchOnProviders.answer}</result>`
+        search_results += (`\n`)
+      } else {
+        search_results = searchOnProviders.map((result: ProviderResults, idx) =>
+          `<result source="${result.url}" id="${idx}">${result?.content}</result>`
+        )
+          .join("\n")
+      }
     }
 
     const urlProvided = getProvidedURLs(searchOnProviders, searchOnAWebSite)
-    
+
     if (returnSearchResults) {
       return {
         prompt: search_results,

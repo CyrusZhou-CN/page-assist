@@ -4,7 +4,7 @@ import React from "react"
 import useDynamicTextareaSize from "~/hooks/useDynamicTextareaSize"
 import { toBase64 } from "~/libs/to-base64"
 import { useMessageOption } from "~/hooks/useMessageOption"
-import { Checkbox, Dropdown, Switch, Tooltip } from "antd"
+import { Checkbox, Dropdown, Switch, Tooltip, Select } from "antd"
 import { Image } from "antd"
 import { useWebUI } from "~/store/webui"
 import { defaultEmbeddingModelForRag } from "~/services/ollama"
@@ -16,7 +16,8 @@ import {
   X,
   FileIcon,
   FileText,
-  PaperclipIcon
+  PaperclipIcon,
+  Brain
 } from "lucide-react"
 import { getVariable } from "@/utils/select-variable"
 import { useTranslation } from "react-i18next"
@@ -27,9 +28,14 @@ import { handleChatInputKeyDown } from "@/utils/key-down"
 import { getIsSimpleInternetSearch } from "@/services/search"
 import { useStorage } from "@plasmohq/storage/hook"
 import { useTabMentions } from "~/hooks/useTabMentions"
+import { useFocusShortcuts } from "~/hooks/keyboard"
 import { MentionsDropdown } from "./MentionsDropdown"
 import { DocumentChip } from "./DocumentChip"
-
+import { otherUnsupportedTypes } from "../Knowledge/utils/unsupported-types"
+import { PASTED_TEXT_CHAR_LIMIT } from "@/utils/constant"
+import { PlaygroundFile } from "./PlaygroundFile"
+import { isThinkingCapableModel, isGptOssModel } from "~/libs/model-utils"
+import { useStoreChatModelSettings } from "~/store/model"
 type Props = {
   dropedFile: File | undefined
 }
@@ -72,6 +78,11 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
 
   const [autoStopTimeout] = useStorage("autoStopTimeout", 2000)
 
+  // Thinking mode state
+  const [defaultThinkingMode] = useStorage("defaultThinkingMode", false)
+  const thinking = useStoreChatModelSettings((state) => state.thinking)
+  const setThinking = useStoreChatModelSettings((state) => state.setThinking)
+
   const {
     tabMentionsEnabled,
     showMentions,
@@ -87,6 +98,10 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
     handleMentionsOpen
   } = useTabMentions(textareaRef)
 
+  // Enable focus shortcuts (Shift+Esc to focus textarea)
+  useFocusShortcuts(textareaRef, true)
+
+  const [pasteLargeTextAsFile] = useStorage("pasteLargeTextAsFile", false)
   const isMobile = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
@@ -131,12 +146,23 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
     e: React.ChangeEvent<HTMLInputElement> | File
   ) => {
     if (e instanceof File) {
-      const base64 = await toBase64(e)
-      form.setFieldValue("image", base64)
+      const isUnsupported = otherUnsupportedTypes.includes(e.type)
+
+      if (isUnsupported) {
+        console.error("File type not supported:", e.type)
+        return
+      }
+
+      const isImage = e.type.startsWith("image/")
+      if (isImage) {
+        const base64 = await toBase64(e)
+        form.setFieldValue("image", base64)
+      } else {
+        await handleFileUpload(e)
+      }
     } else {
       if (e.target.files) {
-        const base64 = await toBase64(e.target.files[0])
-        form.setFieldValue("image", base64)
+        onFileInputChange(e)
       }
     }
   }
@@ -144,8 +170,15 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
   const onFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
-      const isImage = file.type.startsWith("image/")
 
+      const isUnsupported = otherUnsupportedTypes.includes(file.type)
+
+      if (isUnsupported) {
+        console.error("File type not supported:", file.type)
+        return
+      }
+
+      const isImage = file.type.startsWith("image/")
       if (isImage) {
         const base64 = await toBase64(file)
         form.setFieldValue("image", base64)
@@ -154,9 +187,27 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
       }
     }
   }
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const handlePaste = async (e: React.ClipboardEvent) => {
     if (e.clipboardData.files.length > 0) {
       onInputChange(e.clipboardData.files[0])
+      return
+    }
+
+    const pastedText = e.clipboardData.getData("text/plain")
+
+    if (
+      pasteLargeTextAsFile &&
+      pastedText &&
+      pastedText.length > PASTED_TEXT_CHAR_LIMIT
+    ) {
+      e.preventDefault()
+      const blob = new Blob([pastedText], { type: "text/plain" })
+      const file = new File([blob], `pasted-text-${Date.now()}.txt`, {
+        type: "text/plain"
+      })
+
+      await handleFileUpload(file)
+      return
     }
   }
   React.useEffect(() => {
@@ -225,7 +276,12 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
 
   const submitForm = () => {
     form.onSubmit(async (value) => {
-      if (value.message.trim().length === 0 && value.image.length === 0) {
+      if (
+        value.message.trim().length === 0 &&
+        value.image.length === 0 &&
+        selectedDocuments.length === 0 &&
+        uploadedFiles.length === 0
+      ) {
         return
       }
       const defaultEM = await defaultEmbeddingModelForRag()
@@ -299,12 +355,11 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
       <div className="relative z-10 flex w-full flex-col items-center justify-center gap-2 text-base">
         <div className="relative flex w-full flex-row justify-center gap-2 lg:w-3/5">
           <div
-            className={` bg-neutral-50  dark:bg-[#2D2D2D] relative w-full max-w-[48rem] p-1 backdrop-blur-lg duration-100 border border-gray-300 rounded-t-xl  dark:border-gray-600
-            ${temporaryChat ? "!bg-gray-200 dark:!bg-black " : ""}
-            ${checkWideMode ? "max-w-none " : ""}
-            `}>
+            data-istemporary-chat={temporaryChat}
+            data-checkwidemode={checkWideMode}
+            className={` bg-neutral-50  dark:bg-[#2a2a2a] relative w-full max-w-[48rem] p-1 backdrop-blur-lg duration-100 border border-gray-300 rounded-t-xl  dark:border-[#404040] data-[istemporary-chat='true']:bg-gray-200 data-[istemporary-chat='true']:dark:bg-black data-[checkwidemode='true']:max-w-none`}>
             <div
-              className={`border-b border-gray-200 dark:border-gray-600 relative ${
+              className={`border-b border-gray-200 dark:border-[#404040] relative ${
                 form.values.image.length === 0 ? "hidden" : "block"
               }`}>
               <button
@@ -312,7 +367,7 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                 onClick={() => {
                   form.setFieldValue("image", "")
                 }}
-                className="absolute top-1 left-1 flex items-center justify-center z-10 bg-white dark:bg-[#2D2D2D] p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 text-black dark:text-gray-100">
+                className="absolute top-1 left-1 flex items-center justify-center z-10 bg-white dark:bg-[#2a2a2a] p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#404040] text-black dark:text-gray-100">
                 <X className="h-4 w-4" />
               </button>{" "}
               <Image
@@ -324,7 +379,7 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
             </div>
             {selectedDocuments.length > 0 && (
               <div className="p-3">
-                <div className="max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                <div className="max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-[#404040] scrollbar-track-transparent">
                   <div className="flex flex-wrap gap-1.5">
                     {selectedDocuments.map((document) => (
                       <DocumentChip
@@ -338,7 +393,7 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
               </div>
             )}
             {uploadedFiles.length > 0 && (
-              <div className="p-3 border-b border-gray-200 dark:border-gray-600">
+              <div className="p-3 border-b border-gray-200 dark:border-[#404040]">
                 <div className="flex items-center justify-end mb-2">
                   <div className="flex items-center gap-2">
                     <Tooltip title={t("fileRetrievalEnabled")}>
@@ -353,40 +408,14 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                     </Tooltip>
                   </div>
                 </div>
-                <div className="max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                <div className="max-h-24 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-[#404040] scrollbar-track-transparent">
                   <div className="flex flex-wrap gap-1.5">
                     {uploadedFiles.map((file) => (
-                      <button
+                      <PlaygroundFile
                         key={file.id}
-                        className="relative group p-1.5 w-60 flex items-center gap-1 bg-white dark:bg-[#1a1a1a] border border-gray-50 dark:border-white/5 rounded-2xl text-left"
-                        type="button">
-                        <div className="p-3 bg-black/20 dark:bg-white/10 text-white rounded-xl">
-                          <FileIcon className="size-5" />
-                        </div>
-                        <div className="flex flex-col justify-center -space-y-0.5 px-2.5 w-full">
-                          <div className="dark:text-gray-100 text-sm font-medium line-clamp-1 mb-1">
-                            {file.filename}
-                          </div>
-                          <div className="flex justify-between text-gray-500 text-xs line-clamp-1">
-                            File{" "}
-                            <span className="capitalize">
-                              {new Intl.NumberFormat(undefined, {
-                                style: "unit",
-                                unit: "megabyte",
-                                maximumFractionDigits: 2
-                              }).format(file.size / (1024 * 1024))}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="absolute -top-1 -right-1">
-                          <button
-                            onClick={() => removeUploadedFile(file.id)}
-                            className="bg-white dark:bg-gray-700 text-black dark:text-gray-100 border border-gray-50 dark:border-gray-600 rounded-full group-hover:visible invisible transition"
-                            type="button">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </button>
+                        file={file}
+                        removeUploadedFile={removeUploadedFile}
+                      />
                     ))}
                   </div>
                 </div>
@@ -415,7 +444,9 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                     }
                     if (
                       value.message.trim().length === 0 &&
-                      value.image.length === 0
+                      value.image.length === 0 &&
+                      selectedDocuments.length === 0 &&
+                      uploadedFiles.length === 0
                     ) {
                       return
                     }
@@ -456,7 +487,7 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                     onChange={onFileInputChange}
                   />
 
-                  <div className="w-full  flex flex-col dark:border-gray-600  px-2 ">
+                  <div className="w-full  flex flex-col dark:border-[#404040]  px-2 ">
                     <div className="relative">
                       <textarea
                         id="textarea-message"
@@ -516,7 +547,7 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                       />
                     </div>
                     <div className="mt-2 flex justify-between items-center">
-                      <div className="flex">
+                      <div className="flex gap-3">
                         {!selectedKnowledge && (
                           <Tooltip title={t("tooltip.searchInternet")}>
                             <div className="inline-flex items-center gap-2">
@@ -532,6 +563,60 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                             </div>
                           </Tooltip>
                         )}
+                        {defaultThinkingMode && isThinkingCapableModel(selectedModel) &&
+                          (isGptOssModel(selectedModel) ? (
+                            // For gpt-oss: Only show level selector (no on/off toggle)
+                            <div className="inline-flex items-center gap-2">
+                              <Tooltip title="Adjust reasoning intensity (always enabled)">
+                                <div className="inline-flex items-center gap-2">
+                                  <Brain className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                                </div>
+                              </Tooltip>
+                              <Select
+                                size="small"
+                                value={
+                                  typeof thinking === "string"
+                                    ? thinking
+                                    : "medium"
+                                }
+                                onChange={(value) =>
+                                  setThinking?.(
+                                    value as "low" | "medium" | "high"
+                                  )
+                                }
+                                options={[
+                                  {
+                                    value: "low",
+                                    label: t("form.thinking.levels.low")
+                                  },
+                                  {
+                                    value: "medium",
+                                    label: t("form.thinking.levels.medium")
+                                  },
+                                  {
+                                    value: "high",
+                                    label: t("form.thinking.levels.high")
+                                  }
+                                ]}
+                                className="w-24"
+                              />
+                            </div>
+                          ) : (
+                            // For other models: Show toggle (can enable/disable)
+                            <div className="inline-flex items-center gap-2">
+                              <Tooltip title={t("tooltip.thinking")}>
+                                <div className="inline-flex items-center gap-2">
+                                  <Brain className="h-5 w-5 dark:text-gray-300" />
+                                  <Switch
+                                    checked={!!thinking}
+                                    onChange={(e) => setThinking?.(e)}
+                                    checkedChildren={t("form.thinking.on")}
+                                    unCheckedChildren={t("form.thinking.off")}
+                                  />
+                                </div>
+                              </Tooltip>
+                            </div>
+                          ))}
                       </div>
                       <div className="flex !justify-end gap-3">
                         {history.length > 0 && (
@@ -674,7 +759,7 @@ export const PlaygroundForm = ({ dropedFile }: Props) => {
                             <button
                               type="button"
                               onClick={stopStreamingRequest}
-                              className="text-gray-800 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md p-1">
+                              className="text-gray-800 dark:text-gray-300 border border-gray-300 dark:border-[#404040] rounded-md p-1">
                               <StopCircleIcon className="size-5" />
                             </button>{" "}
                           </Tooltip>

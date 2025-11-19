@@ -9,7 +9,7 @@ import { HumanMessage } from "./HumanMessge"
 import { ChatDocuments } from "@/models/ChatTypes"
 import { DocumentChip } from "./DocumentChip"
 import { DocumentFile } from "./DocumentFile"
-
+import { tagColors } from "@/utils/color"
 type Props = {
   message: string
   message_type?: string
@@ -50,8 +50,10 @@ export const PlaygroundUserMessageBubble: React.FC<Props> = (props) => {
     <div
       className={`group gap-2 relative flex w-full max-w-3xl flex-col items-end justify-center pb-2 md:px-4 lg:w-4/5 text-[#242424] dark:text-gray-100 ${checkWideMode ? "max-w-none" : ""}`}>
       {!editMode && props?.message_type ? (
-        <Tag color={tagColors[props?.message_type] || "default"}>
-          {t(`copilot.${props?.message_type}`)}
+        <Tag color={props?.message_type?.startsWith("custom_copilot_custom_") ? "orange" : tagColors[props?.message_type] || "default"}>
+          {props?.message_type?.startsWith("custom_copilot_custom_")
+            ? t("copilot.custom")
+            : t(`copilot.${props?.message_type}`)}
         </Tag>
       ) : null}
 
@@ -91,14 +93,24 @@ export const PlaygroundUserMessageBubble: React.FC<Props> = (props) => {
               ))}
           </div>
         )}
-      <div
-        dir="auto"
-        className={`message-bubble bg-gray-50 dark:bg-[#242424] rounded-3xl prose dark:prose-invert break-words text-primary min-h-7 prose-p:opacity-95 prose-strong:opacity-100 bg-foreground border border-input-border max-w-[100%] sm:max-w-[90%] px-4 py-2.5 rounded-br-lg dark:border-[#2D2D2D] ${
-          props.message_type && !editMode ? "italic" : ""
-        }`}>
-        {!editMode ? (
+
+      {!editMode && props?.message?.length > 0 && (
+        <div
+          dir="auto"
+          data-is-not-editable={!editMode}
+          className={`message-bubble bg-gray-50 dark:bg-[#242424] rounded-3xl prose dark:prose-invert break-words text-primary min-h-7 prose-p:opacity-95 prose-strong:opacity-100 bg-foreground border border-input-border max-w-[100%] sm:max-w-[90%] px-4 py-2.5 rounded-br-lg dark:border-[#2a2a2a] ${
+            props.message_type && !editMode ? "italic" : ""
+          }`}>
           <HumanMessage message={props.message} />
-        ) : (
+        </div>
+      )}
+
+      {editMode && (
+        <div
+          dir="auto"
+          className={`message-bubble bg-gray-50 dark:bg-[#2a2a2a] rounded-3xl prose dark:prose-invert break-words text-primary min-h-7 prose-p:opacity-95 prose-strong:opacity-100 bg-foreground border border-input-border max-w-[100%] sm:max-w-[90%] px-4 py-2.5 rounded-br-lg dark:border-[#2a2a2a] ${
+            props.message_type && !editMode ? "italic" : ""
+          }`}>
           <div className="w-screen max-w-[100%]">
             <EditMessageForm
               value={props.message}
@@ -107,8 +119,8 @@ export const PlaygroundUserMessageBubble: React.FC<Props> = (props) => {
               isBot={props.isBot}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {props.images &&
         props.images.filter((img) => img.length > 0).length > 0 && (

@@ -11,7 +11,9 @@ export const SidePanelBody = () => {
     streaming,
     regenerateLastMessage,
     editMessage,
-    isSearchingInternet
+    isSearchingInternet, 
+    createChatBranch,
+    temporaryChat
   } = useMessage()
   const [isSourceOpen, setIsSourceOpen] = React.useState(false)
   const [source, setSource] = React.useState<any>(null)
@@ -38,6 +40,9 @@ export const SidePanelBody = () => {
             onEditFormSubmit={(value) => {
               editMessage(index, value, !message.isBot)
             }}
+            onNewBranch={() => {
+              createChatBranch(index)
+            }}
             onSourceClick={(data) => {
               setSource(data)
               setIsSourceOpen(true)
@@ -48,6 +53,7 @@ export const SidePanelBody = () => {
             reasoningTimeTaken={message?.reasoning_time_taken}
             modelImage={message?.modelImage}
             modelName={message?.modelName}
+            temporaryChat={temporaryChat}
           />
         ))}
       </div>

@@ -62,6 +62,12 @@
       },
       "tabMentionsEnabled": {
         "label": "Увімкнути згадування вкладок (@tab)"
+      },
+      "pasteLargeTextAsFile": {
+        "label": "Вставити великий текст як файл"
+      },
+      "sidepanelTemporaryChat": {
+        "label": "Увімкнути тимчасовий чат у бічній панелі за замовчуванням"
       }
     },
     "sidepanelRag": {

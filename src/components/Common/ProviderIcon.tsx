@@ -17,6 +17,12 @@ import { AliBaBaCloudIcon } from "../Icons/AliBaBaCloud"
 import { LlamaCppLogo } from "../Icons/LlamacppLogo"
 import { InfinigenceAI } from "../Icons/InfinigenceAI"
 import { NovitaIcon } from "../Icons/Novita"
+import { VllmLogo } from "../Icons/VllmLogo"
+import { MoonshotIcon } from "../Icons/Moonshot"
+import { XAIIcon } from "../Icons/XAI"
+import { HuggingFaceIcon } from "../Icons/HuggingFaceIcon"
+import { VercelIcon } from "../Icons/VercelIcon"
+import { ChutesIcon } from "../Icons/ChutesIcon"
 
 export const ProviderIcons = ({
   provider,
@@ -64,6 +70,18 @@ export const ProviderIcons = ({
       return <InfinigenceAI className={className} />
     case "novita":
       return <NovitaIcon className={className} />
+    case "vllm":
+      return <VllmLogo className={className} />
+    case "moonshot":
+      return <MoonshotIcon className={className} />
+    case "xai":
+      return <XAIIcon className={className} />
+    case "huggingface":
+      return <HuggingFaceIcon className={className} />
+    case "vercel":
+      return <VercelIcon className={className} />
+    case "chutes":
+      return <ChutesIcon className={className} />
     default:
       return <OllamaIcon className={className} />
   }

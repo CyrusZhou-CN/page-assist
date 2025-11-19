@@ -1,7 +1,7 @@
-import { getModelInfo, isCustomModel, isOllamaModel } from "@/db/models"
+import { getModelInfo, isCustomModel, isOllamaModel } from "@/db/dexie/models"
 import { ChatChromeAI } from "./ChatChromeAi"
 import { ChatOllama } from "./ChatOllama"
-import { getOpenAIConfigById } from "@/db/openai"
+import { getOpenAIConfigById } from "@/db/dexie/openai"
 import { urlRewriteRuntime } from "@/libs/runtime"
 import { ChatGoogleAI } from "./ChatGoogleAI"
 import { CustomChatOpenAI } from "./CustomChatOpenAI"
@@ -10,7 +10,7 @@ import {
   getAllDefaultModelSettings,
   getModelSettings
 } from "@/services/model-settings"
-import { useStoreChatModelSettings } from "@/store/model"
+import { useStoreChatModelSettings, normalizeThinking } from "@/store/model"
 
 export const pageAssistModel = async ({
   model,
@@ -95,11 +95,20 @@ export const pageAssistModel = async ({
       await urlRewriteRuntime(providerInfo.baseUrl || "")
     }
 
+    if (providerInfo?.fix_cors) {
+      console.log("Fixing CORS for provider:", providerInfo.provider)
+      await urlRewriteRuntime(providerInfo.baseUrl || "")
+    }
+
     const modelConfig = {
       maxTokens: modelSettings?.numPredict || numPredict,
       temperature: modelSettings?.temperature || temperature,
       topP: modelSettings?.topP || topP,
-      reasoningEffort: modelSettings?.reasoningEffort || reasoningEffort as any
+      topK: modelSettings?.topK || topK,
+      minP: modelSettings?.minP || minP,
+      numCtx: modelSettings?.numCtx || numCtx,
+      reasoningEffort:
+        modelSettings?.reasoningEffort || (reasoningEffort as any)
     }
 
     if (providerInfo.provider === "gemini") {
@@ -126,6 +135,10 @@ export const pageAssistModel = async ({
         temperature: modelConfig?.temperature,
         topP: modelConfig?.topP,
         maxTokens: modelConfig?.maxTokens,
+        modelKwargs: {
+          ...(modelConfig?.topK && { top_k: modelConfig.topK }),
+          ...(modelConfig?.minP && { min_p: modelConfig.minP }),
+        },
         configuration: {
           apiKey: providerInfo.apiKey || "temp",
           baseURL: providerInfo.baseUrl || "",
@@ -141,12 +154,56 @@ export const pageAssistModel = async ({
       }) as any
     }
 
+    if (providerInfo.provider === "ollama2") {
+      const _keepAlive = currentChatModelSettings?.keepAlive || modelSettings?.keepAlive || keepAlive || ""
+      const payload = {
+        keepAlive: _keepAlive.length > 0 ? _keepAlive : undefined,
+        temperature: currentChatModelSettings?.temperature ?? modelSettings?.temperature ?? temperature,
+        topK: currentChatModelSettings?.topK ?? modelSettings?.topK ?? topK,
+        topP: currentChatModelSettings?.topP ?? modelSettings?.topP ?? topP,
+        numCtx: currentChatModelSettings?.numCtx ?? modelSettings?.numCtx ?? numCtx,
+        numGpu: currentChatModelSettings?.numGpu ?? modelSettings?.numGpu ?? numGpu,
+        numPredict: currentChatModelSettings?.numPredict ?? modelSettings?.numPredict ?? numPredict,
+        useMMap: currentChatModelSettings?.useMMap ?? modelSettings?.useMMap ?? useMMap,
+        minP: currentChatModelSettings?.minP ?? modelSettings?.minP ?? minP,
+        repeatPenalty: currentChatModelSettings?.repeatPenalty ?? modelSettings?.repeatPenalty ?? repeatPenalty,
+        repeatLastN: currentChatModelSettings?.repeatLastN ?? modelSettings?.repeatLastN ?? repeatLastN,
+        tfsZ: currentChatModelSettings?.tfsZ ?? modelSettings?.tfsZ ?? tfsZ,
+        numKeep: currentChatModelSettings?.numKeep ?? modelSettings?.numKeep ?? numKeep,
+        numThread: currentChatModelSettings?.numThread ?? modelSettings?.numThread ?? numThread,
+        useMlock: currentChatModelSettings?.useMlock ?? modelSettings?.useMLock ?? useMlock,
+        thinking: normalizeThinking(
+          currentChatModelSettings?.thinking ?? modelSettings?.thinking,
+          model
+        )
+      }
+
+      return new ChatOllama({
+        baseUrl: providerInfo.baseUrl,
+        model: modelInfo.model_id,
+        seed,
+        headers: {
+          ...(providerInfo.apiKey && {
+            Authorization: `Bearer ${providerInfo.apiKey}`
+          }),
+          ...getCustomHeaders({
+            headers: providerInfo?.headers || []
+          })
+        },
+        ...payload
+      })
+    }
+
     return new CustomChatOpenAI({
       modelName: modelInfo.model_id,
       openAIApiKey: providerInfo.apiKey || "temp",
       temperature: modelConfig?.temperature,
       topP: modelConfig?.topP,
       maxTokens: modelConfig?.maxTokens,
+      modelKwargs: {
+        ...(modelConfig?.topK && { top_k: topK }),
+        ...(modelConfig?.minP && { min_p: minP }), 
+      },
       configuration: {
         apiKey: providerInfo.apiKey || "temp",
         baseURL: providerInfo.baseUrl || "",
@@ -158,31 +215,33 @@ export const pageAssistModel = async ({
     }) as any
   }
 
-
-  const _keepAlive = modelSettings?.keepAlive || keepAlive || ""
+  const _keepAlive = currentChatModelSettings?.keepAlive || modelSettings?.keepAlive || keepAlive || ""
   const payload = {
     keepAlive: _keepAlive.length > 0 ? _keepAlive : undefined,
-    temperature: modelSettings?.temperature || temperature,
-    topK: modelSettings?.topK || topK,
-    topP: modelSettings?.topP || topP,
-    numCtx: modelSettings?.numCtx || numCtx,
-    numGpu: modelSettings?.numGpu || numGpu,
-    numPredict: modelSettings?.numPredict || numPredict,
-    useMMap: modelSettings?.useMMap || useMMap,
-    minP: modelSettings?.minP || minP,
-    repeatPenalty: modelSettings?.repeatPenalty || repeatPenalty,
-    repeatLastN: modelSettings?.repeatLastN || repeatLastN,
-    tfsZ: modelSettings?.tfsZ || tfsZ,
-    numKeep: modelSettings?.numKeep || numKeep,
-    numThread: modelSettings?.numThread || numThread,
-    useMlock: modelSettings?.useMLock || useMlock,
-    thinking: currentChatModelSettings?.thinking || modelSettings?.thinking
+    temperature: currentChatModelSettings?.temperature ?? modelSettings?.temperature ?? temperature,
+    topK: currentChatModelSettings?.topK ?? modelSettings?.topK ?? topK,
+    topP: currentChatModelSettings?.topP ?? modelSettings?.topP ?? topP,
+    numCtx: currentChatModelSettings?.numCtx ?? modelSettings?.numCtx ?? numCtx,
+    numGpu: currentChatModelSettings?.numGpu ?? modelSettings?.numGpu ?? numGpu,
+    numPredict: currentChatModelSettings?.numPredict ?? modelSettings?.numPredict ?? numPredict,
+    useMMap: currentChatModelSettings?.useMMap ?? modelSettings?.useMMap ?? useMMap,
+    minP: currentChatModelSettings?.minP ?? modelSettings?.minP ?? minP,
+    repeatPenalty: currentChatModelSettings?.repeatPenalty ?? modelSettings?.repeatPenalty ?? repeatPenalty,
+    repeatLastN: currentChatModelSettings?.repeatLastN ?? modelSettings?.repeatLastN ?? repeatLastN,
+    tfsZ: currentChatModelSettings?.tfsZ ?? modelSettings?.tfsZ ?? tfsZ,
+    numKeep: currentChatModelSettings?.numKeep ?? modelSettings?.numKeep ?? numKeep,
+    numThread: currentChatModelSettings?.numThread ?? modelSettings?.numThread ?? numThread,
+    useMlock: currentChatModelSettings?.useMlock ?? modelSettings?.useMLock ?? useMlock,
+    thinking: normalizeThinking(
+      currentChatModelSettings?.thinking ?? modelSettings?.thinking,
+      model
+    )
   }
 
   return new ChatOllama({
     baseUrl,
     model,
     seed,
-    ...payload,
+    ...payload
   })
 }

@@ -9,7 +9,7 @@ import {
 } from "~/services/ollama"
 import { useStoreMessageOption, type Message } from "~/store/option"
 import { useStoreMessage } from "~/store"
-import { getContentFromCurrentTab,  } from "~/libs/get-html"
+import { getContentFromCurrentTab } from "~/libs/get-html"
 import { memoryEmbedding } from "@/utils/memory-embeddings"
 import { ChatHistory } from "@/store/option"
 import {
@@ -18,8 +18,7 @@ import {
   getPromptById,
   removeMessageUsingHistoryId,
   updateMessageByIndex
-} from "@/db"
-import { saveMessageOnError, saveMessageOnSuccess } from "./chat-helper"
+} from "@/db/dexie/helpers"
 import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { usePageAssist } from "@/context"
@@ -40,8 +39,15 @@ import {
   mergeReasoningContent,
   removeReasoning
 } from "@/libs/reasoning"
-import { getModelNicknameByID } from "@/db/nickname"
+import { getModelNicknameByID } from "@/db/dexie/nickname"
 import { systemPromptFormatter } from "@/utils/system-message"
+import { createBranchMessage } from "./handlers/messageHandlers"
+import {
+  createSaveMessageOnError,
+  createSaveMessageOnSuccess
+} from "./utils/messageHelpers"
+import { updatePageTitle } from "@/utils/update-page-title"
+import { getNoOfRetrievedDocs } from "@/services/app"
 
 export const useMessage = () => {
   const {
@@ -59,7 +65,9 @@ export const useMessage = () => {
     setIsSearchingInternet,
     webSearch,
     setWebSearch,
-    isSearchingInternet
+    isSearchingInternet,
+    temporaryChat,
+    setTemporaryChat
   } = useStoreMessageOption()
   const [defaultInternetSearchOn] = useStorage("defaultInternetSearchOn", false)
 
@@ -67,7 +75,7 @@ export const useMessage = () => {
 
   const [chatWithWebsiteEmbedding] = useStorage(
     "chatWithWebsiteEmbedding",
-    true
+    false
   )
   const [maxWebsiteContext] = useStorage("maxWebsiteContext", 4028)
 
@@ -96,7 +104,7 @@ export const useMessage = () => {
     useOCR,
     setUseOCR
   } = useStoreMessage()
-
+  const [sidepanelTemporaryChat] = useStorage("sidepanelTemporaryChat", false)
   const [speechToTextLanguage, setSpeechToTextLanguage] = useStorage(
     "speechToTextLanguage",
     "en-US"
@@ -115,6 +123,7 @@ export const useMessage = () => {
     setIsLoading(false)
     setIsProcessing(false)
     setStreaming(false)
+    updatePageTitle()
     currentChatModelSettings.reset()
     if (defaultInternetSearchOn) {
       setWebSearch(true)
@@ -122,7 +131,21 @@ export const useMessage = () => {
     if (defaultChatWithWebsite) {
       setChatMode("rag")
     }
+    if (sidepanelTemporaryChat) {
+      setTemporaryChat(true)
+    }
   }
+
+  const saveMessageOnSuccess = createSaveMessageOnSuccess(
+    temporaryChat,
+    setHistoryId as (id: string) => void
+  )
+  const saveMessageOnError = createSaveMessageOnError(
+    temporaryChat,
+    history,
+    setHistory,
+    setHistoryId as (id: string) => void
+  )
 
   const chatWithWebsiteMode = async (
     message: string,
@@ -139,7 +162,7 @@ export const useMessage = () => {
 
     const ollama = await pageAssistModel({
       model: selectedModel!,
-      baseUrl: cleanUrl(url),
+      baseUrl: cleanUrl(url)
     })
 
     let newMessage: Message[] = []
@@ -257,7 +280,7 @@ export const useMessage = () => {
           .replaceAll("{question}", message)
         const questionOllama = await pageAssistModel({
           model: selectedModel!,
-          baseUrl: cleanUrl(url),
+          baseUrl: cleanUrl(url)
         })
         const response = await questionOllama.invoke(promptForQuestion)
         query = response.content.toString()
@@ -275,7 +298,9 @@ export const useMessage = () => {
       }[] = []
 
       if (chatWithWebsiteEmbedding) {
-        const docs = await vectorstore.similaritySearch(query, 4)
+        const docSize = await getNoOfRetrievedDocs()
+
+        const docs = await vectorstore.similaritySearch(query, docSize)
         context = formatDocs(docs)
         source = docs.map((doc) => {
           return {
@@ -446,6 +471,7 @@ export const useMessage = () => {
       setIsProcessing(false)
       setStreaming(false)
     } catch (e) {
+      console.log(e)
       const errorSave = await saveMessageOnError({
         e,
         botMessage: fullText,
@@ -490,7 +516,7 @@ export const useMessage = () => {
 
     const ollama = await pageAssistModel({
       model: selectedModel!,
-      baseUrl: cleanUrl(url),
+      baseUrl: cleanUrl(url)
     })
 
     let newMessage: Message[] = []
@@ -547,7 +573,8 @@ export const useMessage = () => {
 
       if (visionImage === "") {
         throw new Error(
-          "Please close and reopen the side panel. This is a bug that will be fixed soon."
+          data?.error ||
+            "Please close and reopen the side panel. This is a bug that will be fixed soon."
         )
       }
 
@@ -746,7 +773,7 @@ export const useMessage = () => {
 
     const ollama = await pageAssistModel({
       model: selectedModel!,
-      baseUrl: cleanUrl(url),
+      baseUrl: cleanUrl(url)
     })
 
     let newMessage: Message[] = []
@@ -1002,7 +1029,7 @@ export const useMessage = () => {
 
     const ollama = await pageAssistModel({
       model: selectedModel!,
-      baseUrl: cleanUrl(url),
+      baseUrl: cleanUrl(url)
     })
 
     let newMessage: Message[] = []
@@ -1066,7 +1093,7 @@ export const useMessage = () => {
         .replaceAll("{question}", message)
       const questionModel = await pageAssistModel({
         model: selectedModel!,
-        baseUrl: cleanUrl(url),
+        baseUrl: cleanUrl(url)
       })
 
       let questionMessage = await humanMessageFormatter({
@@ -1312,7 +1339,7 @@ export const useMessage = () => {
 
     const ollama = await pageAssistModel({
       model: selectedModel!,
-      baseUrl: cleanUrl(url),
+      baseUrl: cleanUrl(url)
     })
 
     let newMessage: Message[] = []
@@ -1540,7 +1567,8 @@ export const useMessage = () => {
     controller,
     memory,
     messages: chatHistory,
-    messageType
+    messageType,
+    chatType
   }: {
     message: string
     image: string
@@ -1549,6 +1577,7 @@ export const useMessage = () => {
     memory?: ChatHistory
     controller?: AbortController
     messageType?: string
+    chatType?: string
   }) => {
     let signal: AbortSignal
     if (!controller) {
@@ -1560,7 +1589,23 @@ export const useMessage = () => {
       signal = controller.signal
     }
 
-    // this means that the user is trying to send something from a selected text on the web
+    if (chatType === "youtube") {
+      setChatMode("rag")
+      const newEmbeddingController = new AbortController()
+      let embeddingSignal = newEmbeddingController.signal
+      setEmbeddingController(newEmbeddingController)
+      await chatWithWebsiteMode(
+        message,
+        image,
+        isRegenerate,
+        chatHistory || messages,
+        memory || history,
+        signal,
+        embeddingSignal
+      )
+      return
+    }
+
     if (messageType) {
       await presetChatMode(
         message,
@@ -1688,7 +1733,14 @@ export const useMessage = () => {
       }
     }
   }
-
+  const createChatBranch = createBranchMessage({
+    historyId,
+    setHistory,
+    setHistoryId,
+    setMessages,
+    setSelectedSystemPrompt,
+    setSystemPrompt: currentChatModelSettings.setSystemPrompt
+  })
   return {
     messages,
     setMessages,
@@ -1724,6 +1776,10 @@ export const useMessage = () => {
     setUseOCR,
     defaultInternetSearchOn,
     defaultChatWithWebsite,
-    history
+    history,
+    createChatBranch,
+    temporaryChat,
+    setTemporaryChat,
+    sidepanelTemporaryChat
   }
 }

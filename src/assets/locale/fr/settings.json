@@ -62,6 +62,12 @@
       },
       "tabMentionsEnabled": {
         "label": "Activer les mentions d'onglets (@tab)"
+      },
+      "pasteLargeTextAsFile": {
+        "label": "Coller le texte volumineux en tant que fichier"
+      },
+      "sidepanelTemporaryChat": {
+        "label": "Activer le chat temporaire dans le panneau latéral par défaut"
       }
     },
     "sidepanelRag": {

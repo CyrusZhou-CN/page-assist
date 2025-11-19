@@ -1,6 +1,5 @@
 import { BetaTag } from "@/components/Common/Beta"
 import { useFontSize } from "@/context/FontSizeProvider"
-import { PageAssitDatabase } from "@/db"
 import { useMessageOption } from "@/hooks/useMessageOption"
 import {
   exportPageAssistData,
@@ -13,6 +12,9 @@ import { Select, notification, Switch } from "antd"
 import { useTranslation } from "react-i18next"
 import { Loader2, RotateCcw, Upload } from "lucide-react"
 import { toBase64 } from "@/libs/to-base64"
+import { PageAssistDatabase } from "@/db/dexie/chat"
+import { isFireFox, isFireFoxPrivateMode } from "@/utils/is-private-mode"
+import { firefoxSyncDataForPrivateMode } from "@/db/dexie/firefox-sync"
 
 export const SystemSettings = () => {
   const { t } = useTranslation(["settings", "knowledge"])
@@ -63,6 +65,10 @@ export const SystemSettings = () => {
       notification.success({
         message: "Imported data successfully"
       })
+
+      setTimeout(() => { 
+        window.location.reload() 
+      }, 1000)   
     },
     onError: (error) => {
       console.error("Import error:", error)
@@ -72,11 +78,29 @@ export const SystemSettings = () => {
     }
   })
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const syncFirefoxData = useMutation({
+    mutationFn: firefoxSyncDataForPrivateMode,
+    onSuccess: () => {
+      notification.success({
+        message:
+          "Firefox data synced successfully, You don't need to do this again"
+      })
+    },
+    onError: (error) => {
+      console.log(error)
+      notification.error({
+        message: "Firefox data sync failed"
+      })
+    }
+  })
+
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0]
     if (file) {
       try {
-        if (!file.type.startsWith('image/')) {
+        if (!file.type.startsWith("image/")) {
           notification.error({
             message: "Please select a valid image file"
           })
@@ -102,12 +126,12 @@ export const SystemSettings = () => {
         </h2>
         <div className="border border-b border-gray-200 dark:border-gray-600 mt-3"></div>
       </div>
-      <div className="flex flex-row mb-3 justify-between items-center">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
         <span className="text-black dark:text-white font-medium">
           <BetaTag />
           {t("generalSettings.system.fontSize.label")}
         </span>
-        <div className="flex flex-row items-center gap-3">
+        <div className="flex flex-row items-center gap-3 justify-center sm:justify-end">
           <button
             onClick={decrease}
             className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black px-3 py-1.5 rounded-lg transition-colors duration-200 font-medium text-sm">
@@ -124,8 +148,8 @@ export const SystemSettings = () => {
         </div>
       </div>
 
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           <BetaTag />
           {t("generalSettings.system.actionIcon.label")}
         </span>
@@ -141,14 +165,14 @@ export const SystemSettings = () => {
             }
           ]}
           value={actionIconClick}
-          className="w-full mt-4 sm:mt-0 sm:w-[200px]"
+          className="w-full sm:w-[200px]"
           onChange={(value) => {
             setActionIconClick(value)
           }}
         />
       </div>
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           <BetaTag />
           {t("generalSettings.system.contextMenu.label")}
         </span>
@@ -164,44 +188,70 @@ export const SystemSettings = () => {
             }
           ]}
           value={contextMenuClick}
-          className="w-full mt-4 sm:mt-0 sm:w-[200px]"
+          className="w-full sm:w-[200px]"
           onChange={(value) => {
             setContextMenuClick(value)
           }}
         />
       </div>
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      {isFireFox && !isFireFoxPrivateMode && (
+        <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+          <span className="text-gray-700 dark:text-neutral-50">
+            <BetaTag />
+            {t("generalSettings.system.firefoxPrivateModeSync.label", {
+              defaultValue:
+                "Sync Custom Models, Prompts for Firefox Private Windows (Incognito Mode)"
+            })}
+          </span>
+          <button
+            onClick={() => {
+              syncFirefoxData.mutate()
+            }}
+            disabled={syncFirefoxData.isPending}
+            className="bg-gray-800 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-md cursor-pointer w-full sm:w-auto">
+            {syncFirefoxData.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              t("generalSettings.system.firefoxPrivateModeSync.button", {
+                defaultValue: "Sync Data"
+              })
+            )}
+          </button>
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           {t("generalSettings.system.webuiBtnSidePanel.label")}
         </span>
-        <Switch
+         <div>
+          <Switch
           checked={webuiBtnSidePanel}
           onChange={(checked) => {
             setWebuiBtnSidePanel(checked)
           }}
         />
+         </div>
       </div>
 
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           <BetaTag />
           {t("generalSettings.system.chatBackgroundImage.label")}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center sm:justify-end">
           {chatBackgroundImage ? (
             <button
               onClick={() => {
                 setChatBackgroundImage(null)
               }}
-              className=" text-gray-800 dark:text-white">
+              className="text-gray-800 dark:text-white">
               <RotateCcw className="size-4" />
             </button>
           ) : null}
           <label
             htmlFor="background-image-upload"
             className="bg-gray-800 inline-flex gap-2 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-md cursor-pointer">
-           
-           <Upload className="size-4" />
+            <Upload className="size-4" />
             {t("knowledge:form.uploadFile.label")}
           </label>
           <input
@@ -214,23 +264,23 @@ export const SystemSettings = () => {
         </div>
       </div>
 
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           {t("generalSettings.system.export.label")}
         </span>
         <button
           onClick={exportPageAssistData}
-          className="bg-gray-800 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-md cursor-pointer">
+          className="bg-gray-800 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-md cursor-pointer w-full sm:w-auto">
           {t("generalSettings.system.export.button")}
         </button>
       </div>
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           {t("generalSettings.system.import.label")}
         </span>
         <label
           htmlFor="import"
-          className="bg-gray-800 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-md cursor-pointer flex items-center">
+          className="bg-gray-800 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-md cursor-pointer flex items-center justify-center w-full sm:w-auto">
           {importDataMutation.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -253,8 +303,8 @@ export const SystemSettings = () => {
         />
       </div>
 
-      <div className="flex flex-row mb-3 justify-between">
-        <span className="text-gray-700 dark:text-neutral-50 ">
+      <div className="flex flex-col sm:flex-row mb-3 gap-3 sm:gap-0 sm:justify-between sm:items-center">
+        <span className="text-gray-700 dark:text-neutral-50">
           {t("generalSettings.system.deleteChatHistory.label")}
         </span>
 
@@ -265,8 +315,8 @@ export const SystemSettings = () => {
             )
 
             if (confirm) {
-              const db = new PageAssitDatabase()
-              await db.deleteAllChatHistory()
+              const db = new PageAssistDatabase()
+              await db.clearDB()
               queryClient.invalidateQueries({
                 queryKey: ["fetchChatHistory"]
               })
@@ -280,7 +330,7 @@ export const SystemSettings = () => {
               }
             }
           }}
-          className="bg-red-500 dark:bg-red-600 text-white dark:text-gray-200 px-4 py-2 rounded-md">
+          className="bg-red-500 dark:bg-red-600 text-white dark:text-gray-200 px-4 py-2 rounded-md w-full sm:w-auto">
           {t("generalSettings.system.deleteChatHistory.button")}
         </button>
       </div>

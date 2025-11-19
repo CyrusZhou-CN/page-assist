@@ -8,17 +8,18 @@ import {
   formatToMessage,
   getPromptById,
   getRecentChatFromWebUI
-} from "@/db"
-import { getLastUsedChatSystemPrompt } from "@/services/model-settings"
+} from "@/db/dexie/helpers"
 import { useStoreChatModelSettings } from "@/store/model"
 import { useSmartScroll } from "@/hooks/useSmartScroll"
 import { ChevronDown } from "lucide-react"
 import { useStorage } from "@plasmohq/storage/hook"
 import { Storage } from "@plasmohq/storage"
-
+import { otherUnsupportedTypes } from "../Knowledge/utils/unsupported-types"
 export const Playground = () => {
   const drop = React.useRef<HTMLDivElement>(null)
   const [dropedFile, setDropedFile] = React.useState<File | undefined>()
+  const [defaultWebUIPrompt] = useStorage("defaultWebUIPrompt", undefined)
+
   const [chatBackgroundImage] = useStorage({
     key: "chatBackgroundImage",
     instance: new Storage({
@@ -33,13 +34,14 @@ export const Playground = () => {
     setHistory,
     setMessages,
     setSelectedSystemPrompt,
-    streaming
+    streaming,
+    webuiTemporaryChat,
+    setTemporaryChat,
+    setSelectedQuickPrompt
   } = useMessageOption()
   const { setSystemPrompt } = useStoreChatModelSettings()
-  const { containerRef, isAtBottom, scrollToBottom } = useSmartScroll(
-    messages,
-    streaming
-  )
+  const { containerRef, isAutoScrollToBottom, autoScrollToBottom } =
+    useSmartScroll(messages, streaming, 120)
 
   const [dropState, setDropState] = React.useState<
     "idle" | "dragging" | "error"
@@ -66,19 +68,22 @@ export const Playground = () => {
 
       const files = Array.from(e.dataTransfer?.files || [])
 
-      const isImage = files.every((file) => file.type.startsWith("image/"))
+      const hasUnsupportedFiles = files.some((file) =>
+        otherUnsupportedTypes.includes(file.type)
+      )
 
-      if (!isImage) {
+      if (hasUnsupportedFiles) {
         setDropState("error")
         return
       }
 
-      const newFiles = Array.from(e.dataTransfer?.files || []).slice(0, 1)
+      const newFiles = Array.from(e.dataTransfer?.files || []).slice(0, 5) // Allow multiple files
       if (newFiles.length > 0) {
-        setDropedFile(newFiles[0])
+        newFiles.forEach((file) => {
+          setDropedFile(file)
+        })
       }
     }
-
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault()
       e.stopPropagation()
@@ -118,15 +123,13 @@ export const Playground = () => {
         setHistory(formatToChatHistory(recentChat.messages))
         setMessages(formatToMessage(recentChat.messages))
 
-        const lastUsedPrompt = await getLastUsedChatSystemPrompt(
-          recentChat.history.id
-        )
+        const lastUsedPrompt = recentChat?.history?.last_used_prompt
         if (lastUsedPrompt) {
           if (lastUsedPrompt.prompt_id) {
             const prompt = await getPromptById(lastUsedPrompt.prompt_id)
             if (prompt) {
               setSelectedSystemPrompt(lastUsedPrompt.prompt_id)
-              setSystemPrompt(lastUsedPrompt.prompt_content)
+              setSystemPrompt(prompt.content)
             }
           }
           setSystemPrompt(lastUsedPrompt.prompt_content)
@@ -136,27 +139,58 @@ export const Playground = () => {
   }
 
   React.useEffect(() => {
+    const loadDefaultPrompt = async () => {
+      if (defaultWebUIPrompt && messages.length === 0) {
+        try {
+          const prompt = await getPromptById(defaultWebUIPrompt)
+          if (prompt) {
+            if (prompt.is_system) {
+              setSelectedSystemPrompt(prompt.id)
+              setSystemPrompt(prompt.content)
+            } else {
+              setSelectedSystemPrompt(undefined)
+              setSelectedQuickPrompt(prompt!.content)
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load default prompt:", error)
+        }
+      }
+    }
+
+    loadDefaultPrompt()
+  }, [defaultWebUIPrompt])
+
+  React.useEffect(() => {
     setRecentMessagesOnLoad()
   }, [])
+
+  React.useEffect(() => {
+    if (webuiTemporaryChat) {
+      setTemporaryChat(true)
+    }
+  }, [webuiTemporaryChat])
 
   return (
     <div
       ref={drop}
-      className={`relative flex h-full flex-col items-center ${
-        dropState === "dragging" ? "bg-gray-100 dark:bg-gray-800" : ""
-      } bg-white dark:bg-[#171717]`}
-      style={chatBackgroundImage ? {
-        backgroundImage: `url(${chatBackgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      } : {}}>
-      
+      data-is-dragging={dropState === "dragging"}
+      className="relative flex h-full flex-col items-center bg-white dark:bg-[#1a1a1a] data-[is-dragging=true]:bg-gray-100 data-[is-dragging=true]:dark:bg-gray-800"
+      style={
+        chatBackgroundImage
+          ? {
+              backgroundImage: `url(${chatBackgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat"
+            }
+          : {}
+      }>
       {/* Background overlay for opacity effect */}
       {chatBackgroundImage && (
         <div
-          className="absolute inset-0 bg-white dark:bg-[#171717]"
-          style={{ opacity: 0.9, pointerEvents: 'none' }}
+          className="absolute inset-0 bg-white dark:bg-[#1a1a1a]"
+          style={{ opacity: 0.9, pointerEvents: "none" }}
         />
       )}
 
@@ -166,11 +200,11 @@ export const Playground = () => {
         <PlaygroundChat />
       </div>
       <div className="absolute bottom-0 w-full z-10">
-        {!isAtBottom && (
-          <div className="fixed bottom-28 z-20 left-0 right-0 flex justify-center">
+        {!isAutoScrollToBottom && (
+          <div className="absolute bottom-full mb-2 z-10 left-0 right-0 flex justify-center pointer-events-none">
             <button
-              onClick={scrollToBottom}
-              className="bg-gray-50 shadow border border-gray-200 dark:border-none dark:bg-white/20 p-1.5 rounded-full pointer-events-auto">
+              onClick={() => autoScrollToBottom()}
+              className="bg-gray-50 shadow border border-gray-200 dark:border-none dark:bg-white/20 p-1.5 rounded-full pointer-events-auto hover:bg-gray-100 dark:hover:bg-white/30 transition-colors">
               <ChevronDown className="size-4 text-gray-600 dark:text-gray-300" />
             </button>
           </div>

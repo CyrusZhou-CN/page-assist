@@ -5,7 +5,7 @@ import {
   promptForRag
 } from "~/services/ollama"
 import { type ChatHistory, type Message } from "~/store/option"
-import { generateID } from "@/db"
+import { generateID } from "@/db/dexie/helpers"
 import { generateHistory } from "@/utils/generate-history"
 import { pageAssistModel } from "@/models"
 import { humanMessageFormatter } from "@/utils/human-message"
@@ -15,13 +15,14 @@ import {
   mergeReasoningContent,
   removeReasoning
 } from "@/libs/reasoning"
-import { getModelNicknameByID } from "@/db/nickname"
+import { getModelNicknameByID } from "@/db/dexie/nickname"
 import { PageAssistVectorStore } from "@/libs/PageAssistVectorStore"
 import { formatDocs } from "@/chain/chat-with-x"
 import { getAllDefaultModelSettings } from "@/services/model-settings"
 import { getNoOfRetrievedDocs } from "@/services/app"
 import { pageAssistEmbeddingModel } from "@/models/embedding"
 import { isChatWithWebsiteEnabled } from "@/services/kb"
+import { getKnowledgeById } from "@/db/dexie/knowledge"
 
 export const ragMode = async (
   message: string,
@@ -121,6 +122,8 @@ export const ragMode = async (
       userDefaultModelSettings?.keepAlive
   })
 
+  const kbInfo = await getKnowledgeById(selectedKnowledge.id)
+
   let vectorstore = await PageAssistVectorStore.fromExistingIndex(
     ollamaEmbedding,
     {
@@ -131,8 +134,19 @@ export const ragMode = async (
   let timetaken = 0
   try {
     let query = message
-    const { ragPrompt: systemPrompt, ragQuestionPrompt: questionPrompt } =
+    let { ragPrompt: systemPrompt, ragQuestionPrompt: questionPrompt } =
       await promptForRag()
+
+    console.log(kbInfo, "kbInfo")
+    if (kbInfo?.systemPrompt?.trim()) {
+      systemPrompt = kbInfo.systemPrompt
+    }
+
+    if (kbInfo?.followupPrompt?.trim()) {
+      questionPrompt = kbInfo.followupPrompt
+    }
+
+
     if (newMessage.length > 2) {
       const lastTenMessages = newMessage.slice(-10)
       lastTenMessages.pop()
@@ -153,34 +167,34 @@ export const ragMode = async (
       query = removeReasoning(query)
     }
     const docSize = await getNoOfRetrievedDocs()
-    const useVS = await isChatWithWebsiteEnabled()
+    // const useVS = await isChatWithWebsiteEnabled()
     let context: string = ""
     let source: any[] = []
-    if (useVS) {
-      const docs = await vectorstore.similaritySearch(query, docSize)
-      context = formatDocs(docs)
-      source = docs.map((doc) => {
-        return {
-          ...doc,
-          name: doc?.metadata?.source || "untitled",
-          type: doc?.metadata?.type || "unknown",
-          mode: "rag",
-          url: ""
-        }
-      })
-    } else {
-      const docs = await vectorstore.getAllPageContent()
-      context = docs.pageContent
-      source = docs.metadata.map((doc) => {
-        return {
-          ...doc,
-          name: doc?.source || "untitled",
-          type: doc?.type || "unknown",
-          mode: "rag",
-          url: ""
-        }
-      })
-    }
+    // if (useVS) {
+    const docs = await vectorstore.similaritySearchKB(query, docSize)
+    context = formatDocs(docs)
+    source = docs.map((doc) => {
+      return {
+        ...doc,
+        name: doc?.metadata?.source || "untitled",
+        type: doc?.metadata?.type || "unknown",
+        mode: "rag",
+        url: ""
+      }
+    })
+    // } else {
+    //   const docs = await vectorstore.getAllPageContent()
+    //   context = docs.pageContent
+    //   source = docs.metadata.map((doc) => {
+    //     return {
+    //       ...doc,
+    //       name: doc?.source || "untitled",
+    //       type: doc?.type || "unknown",
+    //       mode: "rag",
+    //       url: ""
+    //     }
+    //   })
+    // }
     //  message = message.trim().replaceAll("\n", " ")
 
     let humanMessage = await humanMessageFormatter({

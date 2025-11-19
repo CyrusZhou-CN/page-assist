@@ -14,7 +14,9 @@ export const PlaygroundChat = () => {
     editMessage,
     ttsEnabled,
     onSubmit,
-    actionInfo
+    actionInfo,
+    createChatBranch,
+    temporaryChat
   } = useMessageOption()
   const [isSourceOpen, setIsSourceOpen] = React.useState(false)
   const [source, setSource] = React.useState<any>(null)
@@ -48,6 +50,9 @@ export const PlaygroundChat = () => {
               setSource(data)
               setIsSourceOpen(true)
             }}
+            onNewBranch={()=> {
+              createChatBranch(index)
+            }}
             isTTSEnabled={ttsEnabled}
             generationInfo={message?.generationInfo}
             isStreaming={streaming}
@@ -55,6 +60,7 @@ export const PlaygroundChat = () => {
             openReasoning={openReasoning}
             modelImage={message?.modelImage}
             modelName={message?.modelName}
+            temporaryChat={temporaryChat}  
             onContinue={() => {
               onSubmit({
                 image: "",

@@ -1,7 +1,7 @@
 import React from "react"
 import { type ChatHistory, type Message } from "~/store/option"
 import { useStoreMessageOption } from "~/store/option"
-import { removeMessageUsingHistoryId } from "@/db"
+import { removeMessageUsingHistoryId } from "@/db/dexie/helpers"
 import { useNavigate } from "react-router-dom"
 import { notification } from "antd"
 import { useTranslation } from "react-i18next"
@@ -23,12 +23,14 @@ import {
 import {
   createRegenerateLastMessage,
   createEditMessage,
-  createStopStreamingRequest
+  createStopStreamingRequest,
+  createBranchMessage
 } from "./handlers/messageHandlers"
 import { tabChatMode } from "./chat-modes/tabChatMode"
 import { documentChatMode } from "./chat-modes/documentChatMode"
-import { generateID, type UploadedFile } from "@/db"
-import { convertFileToSource } from "~/utils/to-source"
+import { generateID } from "@/db/dexie/helpers"
+import { UploadedFile } from "@/db/dexie/types"
+import { updatePageTitle } from "@/utils/update-page-title"
 
 export const useMessageOption = () => {
   const {
@@ -76,6 +78,8 @@ export const useMessageOption = () => {
     setFileRetrievalEnabled,
     fileRetrievalEnabled
   } = useStoreMessageOption()
+  const [webuiTemporaryChat] = useStorage("webuiTemporaryChat", false)
+
   const currentChatModelSettings = useStoreChatModelSettings()
   const [selectedModel, setSelectedModel] = useStorage("selectedModel")
   const [defaultInternetSearchOn] = useStorage("defaultInternetSearchOn", false)
@@ -111,9 +115,8 @@ export const useMessageOption = () => {
 
       const fileId = generateID()
 
-      const source = await convertFileToSource({
-        file
-      })
+      const { processFileUpload } = await import("~/utils/file-processor")
+      const source = await processFileUpload(file)
 
       const uploadedFile: UploadedFile = {
         id: fileId,
@@ -162,7 +165,7 @@ export const useMessageOption = () => {
     setIsProcessing(false)
     setStreaming(false)
     setContextFiles([])
-    console.log("clearChat", contextFiles)
+    updatePageTitle()
     currentChatModelSettings.reset()
     // textareaRef?.current?.focus()
     if (defaultInternetSearchOn) {
@@ -174,6 +177,9 @@ export const useMessageOption = () => {
     setUploadedFiles([])
     setFileRetrievalEnabled(false)
     setActionInfo(null)
+    if (webuiTemporaryChat) {
+      setTemporaryChat(true)
+    }
   }
 
   const saveMessageOnSuccess = createSaveMessageOnSuccess(
@@ -362,6 +368,16 @@ export const useMessageOption = () => {
     onSubmit
   })
 
+  const createChatBranch = createBranchMessage({
+    historyId,
+    setHistory,
+    setHistoryId,
+    setMessages,
+    setContext: setContextFiles,
+    setSelectedSystemPrompt,
+    setSystemPrompt: currentChatModelSettings.setSystemPrompt
+  })
+
   return {
     editMessage,
     messages,
@@ -411,6 +427,8 @@ export const useMessageOption = () => {
     clearUploadedFiles,
     actionInfo,
     setActionInfo,
-    setContextFiles
+    setContextFiles,
+    createChatBranch,
+    webuiTemporaryChat
   }
 }

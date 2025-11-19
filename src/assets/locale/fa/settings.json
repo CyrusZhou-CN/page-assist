@@ -59,6 +59,12 @@
       },
       "tabMentionsEnabled": {
         "label": "فعال‌سازی منشن تب (@tab)"
+      },
+      "pasteLargeTextAsFile": {
+        "label": "الصاق متن طولانی به عنوان فایل"
+      },
+      "sidepanelTemporaryChat": {
+        "label": "فعال کردن چت موقت در پنل جانبی به صورت پیش‌فرض"
       }
     },
     "sidepanelRag": {

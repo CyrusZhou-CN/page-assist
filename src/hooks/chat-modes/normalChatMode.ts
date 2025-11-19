@@ -4,7 +4,7 @@ import {
   systemPromptForNonRagOption
 } from "~/services/ollama"
 import { type ChatHistory, type Message } from "~/store/option"
-import { generateID, getPromptById } from "@/db"
+import { generateID, getPromptById } from "@/db/dexie/helpers"
 import { generateHistory } from "@/utils/generate-history"
 import { pageAssistModel } from "@/models"
 import { humanMessageFormatter } from "@/utils/human-message"
@@ -13,7 +13,7 @@ import {
   isReasoningStarted,
   mergeReasoningContent
 } from "@/libs/reasoning"
-import { getModelNicknameByID } from "@/db/nickname"
+import { getModelNicknameByID } from "@/db/dexie/nickname"
 import { systemPromptFormatter } from "@/utils/system-message"
 
 export const normalChatMode = async (
@@ -208,7 +208,7 @@ export const normalChatMode = async (
     let reasoningEndTime: Date | null = null
     let apiReasoning: boolean = false
 
-    for await (const chunk of chunks) { 
+    for await (const chunk of chunks) {
       if (chunk?.additional_kwargs?.reasoning_content) {
         const reasoningContent = mergeReasoningContent(
           fullText,
@@ -306,6 +306,9 @@ export const normalChatMode = async (
     setIsProcessing(false)
     setStreaming(false)
   } catch (e) {
+
+    console.log(e)
+
     const errorSave = await saveMessageOnError({
       e,
       botMessage: fullText,

@@ -11,11 +11,12 @@ import { Message } from "@/types/message"
 import { useState } from "react"
 import { ShareModal } from "../Common/ShareModal"
 import { useTranslation } from "react-i18next"
-import { removeModelSuffix } from "@/db/models"
+import { removeModelSuffix } from "@/db/dexie/models"
 import { copyToClipboard } from "@/utils/clipboard"
 import ReactDOM from "react-dom"
 import html2canvas from "html2canvas"
 import { ImageExportWrapper } from "../Common/ImageExport"
+import { convertMathDelimiters } from "@/utils/math-delimiter"
 interface MoreOptionsProps {
   messages: Message[]
   historyId: string
@@ -29,10 +30,12 @@ const formatAsText = (messages: Message[]) => {
     })
     .join("\n\n")
 }
+
+
 const formatAsMarkdown = (messages: Message[]) => {
   return messages
     .map((msg) => {
-      let content = `### **${msg.isBot ? removeModelSuffix(`${msg.modelName || msg.name}`?.replaceAll(/accounts\/[^\/]+\/models\//g, "")) : "You"}**:\n\n${msg.message}`
+      let content = `### **${msg.isBot ? removeModelSuffix(`${msg.modelName || msg.name}`?.replaceAll(/accounts\/[^\/]+\/models\//g, "")) : "You"}**:\n\n${convertMathDelimiters(msg.message)}`
 
       if (msg.images && msg.images.length > 0) {
         const imageMarkdown = msg.images
@@ -96,8 +99,11 @@ export const MoreOptions = ({
           key: "copy-text",
           label: t("more.copy.asText"),
           icon: <FileText className="w-4 h-4" />,
-          onClick: () => {
-            navigator.clipboard.writeText(formatAsText(messages))
+          onClick: async () => {
+            await copyToClipboard({
+              text: formatAsText(messages),
+              formatted: false
+            })
             message.success(t("more.copy.success"))
           }
         },
@@ -113,7 +119,6 @@ export const MoreOptions = ({
               text: mkd,
               formatted: true
             })
-            // navigator.clipboard.writeText(formatAsMarkdown(messages))
             message.success(t("more.copy.success"))
           }
         },
@@ -121,8 +126,11 @@ export const MoreOptions = ({
           key: "copy-markdown",
           label: t("more.copy.asMarkdown"),
           icon: <FileCode className="w-4 h-4" />,
-          onClick: () => {
-            navigator.clipboard.writeText(formatAsMarkdown(messages))
+          onClick: async () => {
+            await copyToClipboard({
+              text: formatAsMarkdown(messages),
+              formatted: false
+            })
             message.success(t("more.copy.success"))
           }
         }

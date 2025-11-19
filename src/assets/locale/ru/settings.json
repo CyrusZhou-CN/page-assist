@@ -62,6 +62,12 @@
       },
       "tabMentionsEnabled": {
         "label": "Включить упоминания вкладок (@tab)"
+      },
+      "pasteLargeTextAsFile": {
+        "label": "Вставить большой текст как файл"
+      },
+      "sidepanelTemporaryChat": {
+        "label": "Включить временный чат в боковой панели по умолчанию"
       }
     },
     "sidepanelRag": {
