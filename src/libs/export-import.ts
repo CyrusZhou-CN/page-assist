@@ -16,6 +16,7 @@ import { db } from "@/db/dexie/schema"
 import { exportVectors, importVectorsV2 } from "@/db/dexie/vector"
 import { importKnowledge } from "@/db/knowledge"
 import { importVectors } from "@/db/vector"
+import { getStorageSyncEnabled } from "@/services/app"
 
 export const formatKnowledge = (knowledge: any[]) => {
   const kb = []
@@ -53,6 +54,12 @@ export const exportPageAssistData = async () => {
   const nicknames = await exportNicknames()
   const models = await exportModels()
 
+  const storageLocal = await chrome.storage.local.get()
+  const storageSyncEnabled = await getStorageSyncEnabled()
+  const storageSync = storageSyncEnabled
+    ? await chrome.storage.sync.get()
+    : {}
+
   const data = {
     knowledge,
     chat,
@@ -60,7 +67,9 @@ export const exportPageAssistData = async () => {
     prompts,
     oaiConfigs,
     nicknames,
-    models
+    models,
+    storageLocal,
+    storageSync
   }
 
   const dataStr = JSON.stringify(data, null, 2)
@@ -123,6 +132,19 @@ export const importPageAssistData = async (file: File) => {
             }
           }
         )
+
+        if (data?.storageLocal && typeof data.storageLocal === "object") {
+          await chrome.storage.local.set(data.storageLocal)
+        }
+
+        const storageSyncEnabled = await getStorageSyncEnabled()
+        if (
+          storageSyncEnabled &&
+          data?.storageSync &&
+          typeof data.storageSync === "object"
+        ) {
+          await chrome.storage.sync.set(data.storageSync)
+        }
 
         resolve(true)
       } catch (e) {

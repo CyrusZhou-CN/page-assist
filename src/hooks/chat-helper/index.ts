@@ -17,6 +17,7 @@ export const saveMessageOnError = async ({
   history,
   setHistory,
   image,
+  images,
   userMessage,
   botMessage,
   historyId,
@@ -35,6 +36,7 @@ export const saveMessageOnError = async ({
   history: ChatHistory
   userMessage: string
   image: string
+  images?: string[]
   botMessage: string
   historyId: string | null
   selectedModel: string
@@ -47,6 +49,9 @@ export const saveMessageOnError = async ({
   isContinue?: boolean
   documents?: ChatDocuments
 }) => {
+  // Use images array if available, otherwise wrap single image
+  const imagesToSave = images && images.length > 0 ? images : (image ? [image] : [])
+
   if (
     e?.name === "AbortError" ||
     e?.message === "AbortError" ||
@@ -58,7 +63,8 @@ export const saveMessageOnError = async ({
       {
         role: "user",
         content: userMessage,
-        image
+        image,
+        images
       },
       {
         role: "assistant",
@@ -73,7 +79,7 @@ export const saveMessageOnError = async ({
           name: selectedModel,
           role: "user",
           content: userMessage,
-          images: [image],
+          images: imagesToSave,
           time: 1,
           message_type,
           documents
@@ -106,7 +112,19 @@ export const saveMessageOnError = async ({
 
       return historyId
     } else {
-      const title = await generateTitle(selectedModel, userMessage, userMessage)
+      const title = await generateTitle(selectedModel, [
+        ...history,
+        {
+          role: "user",
+          content: userMessage,
+          image,
+          images
+        },
+        {
+          role: "assistant",
+          content: botMessage
+        }
+      ], userMessage)
       const newHistoryId = await saveHistory(title, false, message_source)
       updatePageTitle(title)
       if (!isRegenerating) {
@@ -115,7 +133,7 @@ export const saveMessageOnError = async ({
           name: selectedModel,
           role: "user",
           content: userMessage,
-          images: [image],
+          images: imagesToSave,
           time: 1,
           message_type,
           documents
@@ -155,6 +173,7 @@ export const saveMessageOnSuccess = async ({
   selectedModel,
   message,
   image,
+  images,
   fullText,
   source,
   message_source = "web-ui",
@@ -172,6 +191,7 @@ export const saveMessageOnSuccess = async ({
   selectedModel: string | null
   message: string
   image: string
+  images?: string[]
   fullText: string
   source: any[]
   message_source?: "copilot" | "web-ui"
@@ -183,6 +203,8 @@ export const saveMessageOnSuccess = async ({
   isContinue?: boolean
   documents?: ChatDocuments
 }) => {
+  // Use images array if available, otherwise wrap single image
+  const imagesToSave = images && images.length > 0 ? images : (image ? [image] : [])
   if (historyId) {
     if (!isRegenerate && !isContinue) {
       await saveMessage({
@@ -190,7 +212,7 @@ export const saveMessageOnSuccess = async ({
         name: selectedModel,
         role: "user",
         content: message,
-        images: [image],
+        images: imagesToSave,
         time: 1,
         message_type,
         generationInfo,
@@ -243,7 +265,18 @@ export const saveMessageOnSuccess = async ({
 
     return historyId
   } else {
-    const title = await generateTitle(selectedModel, message, message)
+    const title = await generateTitle(selectedModel, [
+      {
+        role: "user",
+        content: message,
+        image,
+        images
+      },
+      {
+        role: "assistant",
+        content: fullText
+      }
+    ], message)
     updatePageTitle(title)
     const newHistoryId = await saveHistory(title, false, message_source)
 
@@ -253,7 +286,7 @@ export const saveMessageOnSuccess = async ({
         name: selectedModel,
         role: "user",
         content: message,
-        images: [image],
+        images: imagesToSave,
         time: 1,
         message_type,
         generationInfo,

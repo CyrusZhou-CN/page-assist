@@ -92,6 +92,25 @@
       },
       "youtubeAutoSummarize": {
         "label": "Show the 'Summarize' button on YouTube videos."
+      },
+      "hideReasoningWidget": {
+        "label": "Hide Reasoning Widget from AI Messages"
+      },
+      "persistChatInput": {
+        "label": "Persist Chat Input (Save unsent messages)"
+      },
+      "tableTextWrap": {
+        "label": "Enable Text Wrapping in Markdown Tables"
+      },
+      "showMoreForLargeMessage": {
+        "label": "Show 'Show more' for large human messages"
+      },
+      "sidebarPosition": {
+        "label": "Sidebar Position",
+        "options": {
+          "left": "Left",
+          "right": "Right"
+        }
       }
     },
     "sidepanelRag": {
@@ -146,6 +165,16 @@
       "firecrawlAPIKey": {
         "label": "Firecrawl API Key",
         "placeholder": "Enter your Firecrawl API key"
+      },
+      "domainFilter": {
+        "label": "Domain Filter List",
+        "description": "Only show results from these domains",
+        "placeholder": "e.g., example.com"
+      },
+      "blockedDomains": {
+        "label": "Blocked Domains",
+        "description": "Exclude results from these domains",
+        "placeholder": "e.g., spam.com"
       }
     },
     "system": {
@@ -156,12 +185,12 @@
         "confirm": "Are you sure you want to perform a system reset? This will clear all data and cannot be undone."
       },
       "export": {
-        "label": "Export Chat History, Knowledge Base, and Prompts",
+        "label": "Export All Data (Chat History, Knowledge Base, Prompts, and Settings)",
         "button": "Export Data",
         "success": "Export Success"
       },
       "import": {
-        "label": "Import Chat History, Knowledge Base, and Prompts",
+        "label": "Import All Data (Chat History, Knowledge Base, Prompts, and Settings)",
         "button": "Import Data",
         "success": "Import Success",
         "error": "Import Error"
@@ -180,6 +209,9 @@
       },
       "chatBackgroundImage": {
         "label": "Chat Background Image"
+      },
+      "storageSyncEnabled": {
+        "label": "Enable Browser Storage Sync (Sync settings across devices)"
       }
     },
     "tts": {
@@ -420,7 +452,7 @@
     "heading": "Configure Knowledge Base"
   },
   "rag": {
-    "title": "RAG Settings",
+    "title": "Pipeline Settings",
     "ragSettings": {
       "label": "RAG Settings",
       "model": {

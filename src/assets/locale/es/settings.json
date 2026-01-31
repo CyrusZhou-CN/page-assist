@@ -111,20 +111,23 @@
     },
     "system": {
       "heading": "Configuraciones del Sistema",
+      "storageSyncEnabled": {
+        "label": "Habilitar sincronización de almacenamiento del navegador (sincronizar configuraciones entre dispositivos)"
+      },
       "deleteChatHistory": {
         "label": "Reinicio del Sistema",
         "button": "Reiniciar Todo",
         "confirm": "¿Está seguro de que desea realizar un reinicio del sistema? Esto borrará todos los datos y no se puede deshacer."
       },
       "export": {
-        "label": "Exportar Histórico del Chat, Base de Conocimiento y Prompts",
-        "button": "Exportar Datos",
+        "label": "Exportar todos los datos (historial de chat, base de conocimiento, prompts y configuraciones)",
+        "button": "Exportar datos",
         "success": "Exportación exitosa"
       },
       "import": {
-        "label": "Importar Histórico del Chat, Base de Conocimiento y Prompts",
-        "button": "Importar Datos",
-        "success": "Importación existosa",
+        "label": "Importar todos los datos (historial de chat, base de conocimiento, prompts y configuraciones)",
+        "button": "Importar datos",
+        "success": "Importación exitosa",
         "error": "Error de importación"
       }
     },
@@ -359,7 +362,7 @@
     "heading": "Configurar Bases de Conocimiento"
   },
   "rag": {
-    "title": "Configuraciones de RAG",
+    "title": "Configuraciones de Pipeline",
     "ragSettings": {
       "label": "Configuraciones de RAG",
       "model": {

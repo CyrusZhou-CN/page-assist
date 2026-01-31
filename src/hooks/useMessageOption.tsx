@@ -1,7 +1,7 @@
 import React from "react"
 import { type ChatHistory, type Message } from "~/store/option"
 import { useStoreMessageOption } from "~/store/option"
-import { removeMessageUsingHistoryId } from "@/db/dexie/helpers"
+import { removeMessageUsingHistoryId, saveHistory, saveMessage } from "@/db/dexie/helpers"
 import { useNavigate } from "react-router-dom"
 import { notification } from "antd"
 import { useTranslation } from "react-i18next"
@@ -31,6 +31,7 @@ import { documentChatMode } from "./chat-modes/documentChatMode"
 import { generateID } from "@/db/dexie/helpers"
 import { UploadedFile } from "@/db/dexie/types"
 import { updatePageTitle } from "@/utils/update-page-title"
+import { generateTitle } from "@/services/title"
 
 export const useMessageOption = () => {
   const {
@@ -198,6 +199,7 @@ export const useMessageOption = () => {
   const onSubmit = async ({
     message,
     image,
+    images,
     isRegenerate = false,
     messages: chatHistory,
     memory,
@@ -207,6 +209,7 @@ export const useMessageOption = () => {
   }: {
     message: string
     image: string
+    images?: string[]
     isRegenerate?: boolean
     isContinue?: boolean
     messages?: Message[]
@@ -305,6 +308,12 @@ export const useMessageOption = () => {
         )
       } else {
         if (webSearch) {
+          // Include images array in search mode
+          const enhancedSearchChatModeParams = {
+            ...chatModeParams,
+            images: images
+          }
+
           await searchChatMode(
             message,
             image,
@@ -312,13 +321,14 @@ export const useMessageOption = () => {
             chatHistory || messages,
             memory || history,
             signal,
-            chatModeParams
+            enhancedSearchChatModeParams
           )
         } else {
-          // Include uploaded files info even in normal mode
+          // Include uploaded files info and images array in normal mode
           const enhancedChatModeParams = {
             ...chatModeParams,
-            uploadedFiles: uploadedFiles
+            uploadedFiles: uploadedFiles,
+            images: images
           }
 
           await normalChatMode(
@@ -378,6 +388,64 @@ export const useMessageOption = () => {
     setSystemPrompt: currentChatModelSettings.setSystemPrompt
   })
 
+  const saveTemporaryChat = async () => {
+    if (!temporaryChat || messages.length === 0) {
+      return
+    }
+
+    try {
+      // Generate title from the first user message
+      const firstUserMessage = messages.find((msg) => !msg.isBot)?.message || "Untitled Chat"
+      const title = await generateTitle(selectedModel, history, firstUserMessage)
+
+      // Determine message source based on context
+      const messageSource = "web-ui" as const
+
+      // Create new history record
+      const newHistory = await saveHistory(
+        title,
+        chatMode === "rag",
+        messageSource
+      )
+
+      // Save all messages to the new history
+      for (const msg of messages) {
+        await saveMessage({
+          history_id: newHistory.id,
+          name: selectedModel,
+          role: msg.isBot ? "assistant" : "user",
+          content: msg.message,
+          images: msg.images || [],
+          source: msg.sources || [],
+          time: msg.isBot ? 2 : 1,
+          message_type: "normal",
+          generationInfo: msg.generationInfo,
+          reasoning_time_taken: msg.reasoning_time_taken || 0,
+          documents: msg.documents
+        })
+      }
+
+      // Update state to convert temporary chat to permanent
+      setHistoryId(newHistory.id)
+      setTemporaryChat(false)
+      updatePageTitle(title)
+
+      // Show success notification
+      notification.success({
+        message: t("chatSaved"),
+        description: t("temporaryChatSavedSuccessfully")
+      })
+
+      return newHistory.id
+    } catch (error) {
+      console.error("Error saving temporary chat:", error)
+      notification.error({
+        message: t("error"),
+        description: t("failedToSaveTemporaryChat")
+      })
+    }
+  }
+
   return {
     editMessage,
     messages,
@@ -429,6 +497,7 @@ export const useMessageOption = () => {
     setActionInfo,
     setContextFiles,
     createChatBranch,
-    webuiTemporaryChat
+    webuiTemporaryChat,
+    saveTemporaryChat
   }
 }

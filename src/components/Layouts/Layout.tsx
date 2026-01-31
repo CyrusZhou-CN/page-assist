@@ -10,11 +10,15 @@ import { Header } from "./Header"
 import { EraserIcon, XIcon } from "lucide-react"
 // import { PageAssitDatabase } from "@/db/"
 import { useMessageOption } from "@/hooks/useMessageOption"
-import { useChatShortcuts, useSidebarShortcuts } from "@/hooks/keyboard/useKeyboardShortcuts"
+import {
+  useChatShortcuts,
+  useSidebarShortcuts
+} from "@/hooks/keyboard/useKeyboardShortcuts"
 import { useQueryClient } from "@tanstack/react-query"
 import { useStoreChatModelSettings } from "@/store/model"
 import { PageAssistDatabase } from "@/db/dexie/chat"
 import { useMigration } from "../../hooks/useMigration"
+import { useStorage } from "@plasmohq/storage/hook"
 
 export default function OptionLayout({
   children
@@ -25,6 +29,7 @@ export default function OptionLayout({
   const { t } = useTranslation(["option", "common", "settings"])
   const [openModelSettings, setOpenModelSettings] = useState(false)
   useMigration()
+  const [sidebarPosition] = useStorage("sidebarPosition", "left")
   const {
     setMessages,
     setHistory,
@@ -35,14 +40,16 @@ export default function OptionLayout({
     temporaryChat,
     setSelectedSystemPrompt,
     setContextFiles,
-    useOCR
+    useOCR,
+    selectedModel,
+    saveTemporaryChat
   } = useMessageOption()
   const queryClient = useQueryClient()
   const { setSystemPrompt } = useStoreChatModelSettings()
 
   // Create toggle function for sidebar
   const toggleSidebar = () => {
-    setSidebarOpen(prev => !prev)
+    setSidebarOpen((prev) => !prev)
   }
 
   // Initialize shortcuts
@@ -56,6 +63,7 @@ export default function OptionLayout({
           <Header
             setSidebarOpen={setSidebarOpen}
             setOpenModelSettings={setOpenModelSettings}
+            saveTemporaryChat={saveTemporaryChat}
           />
         </div>
         {/* <div className="relative flex h-full flex-col items-center"> */}
@@ -101,7 +109,7 @@ export default function OptionLayout({
               </div>
             </div>
           }
-          placement="left"
+          placement={sidebarPosition === "right" ? "right" : "left"}
           closeIcon={null}
           onClose={() => setSidebarOpen(false)}
           open={sidebarOpen}>
@@ -119,6 +127,7 @@ export default function OptionLayout({
             temporaryChat={temporaryChat}
             history={history}
             setContext={setContextFiles}
+            selectedModel={selectedModel}
           />
         </Drawer>
 
@@ -126,7 +135,7 @@ export default function OptionLayout({
           open={openModelSettings}
           setOpen={setOpenModelSettings}
           useDrawer
-          isOCREnabled={useOCR} 
+          isOCREnabled={useOCR}
         />
       </main>
     </div>

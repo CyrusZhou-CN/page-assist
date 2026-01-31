@@ -123,5 +123,15 @@ export const OAI_API_PROVIDERS = [
     label: "Chutes",
     value: "chutes",
     baseUrl: "https://llm.chutes.ai/v1"
+  },
+  {
+    label: "Anthropic (Claude)",
+    value: "anthropic",
+    baseUrl: "https://api.anthropic.com/v1"
+  },
+  {
+    label: "Canopy Wave",
+    value: "canopywave",
+    baseUrl: "https://inference.canopywave.io/v1"
   }
 ]

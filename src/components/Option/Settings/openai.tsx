@@ -16,6 +16,7 @@ import {
   notification
 } from "antd"
 import { useState } from "react"
+import { useWatch } from "antd/es/form/Form"
 import { useTranslation } from "react-i18next"
 import {
   addOpenAICofig,
@@ -30,6 +31,8 @@ import { OAI_API_PROVIDERS } from "@/utils/oai-api-providers"
 import { ProviderIcons } from "@/components/Common/ProviderIcon"
 const noPopupProvider = ["lmstudio", "llamafile", "ollama2", "llamacpp", "vllm"]
 import { isFireFoxPrivateMode } from "@/utils/is-private-mode"
+import { setProviderState, getAllProviderStates } from "@/db/dexie/providerState"
+import { useState as useReactState, useEffect } from "react"
 
 export const OpenAIApp = () => {
   const { t } = useTranslation(["openai", "settings"])
@@ -40,11 +43,33 @@ export const OpenAIApp = () => {
   const [openaiId, setOpenaiId] = useState<string | null>(null)
   const [openModelModal, setOpenModelModal] = useState(false)
   const [provider, setProvider] = useState("custom")
+  const [providerStates, setProviderStates] = useReactState<Record<string, boolean>>({})
 
   const { data: configs, isLoading } = useQuery({
     queryKey: ["openAIConfigs"],
     queryFn: getAllOpenAIConfig
   })
+
+  useEffect(() => {
+    const loadProviderStates = async () => {
+      const states = await getAllProviderStates()
+      setProviderStates(states)
+    }
+    loadProviderStates()
+  }, [])
+
+  const handleToggleProvider = async (providerId: string, isEnabled: boolean) => {
+    await setProviderState(providerId, isEnabled)
+    const states = await getAllProviderStates()
+    setProviderStates(states)
+    // Invalidate model queries to refresh the list
+    queryClient.invalidateQueries({
+      queryKey: ["fetchModel"]
+    })
+    queryClient.invalidateQueries({
+      queryKey: ["fetchAllModels"]
+    })
+  }
 
   const addMutation = useMutation({
     mutationFn: addOpenAICofig,
@@ -124,6 +149,16 @@ export const OpenAIApp = () => {
     deleteMutation.mutate(id)
   }
 
+  const baseUrl = useWatch("baseUrl", form)
+  if (!editingConfig && baseUrl && provider === "custom") {
+    const matchedProvider = OAI_API_PROVIDERS.find(
+      (p) => p.baseUrl.toLowerCase() === baseUrl.toLowerCase()
+    )
+    if (matchedProvider) {
+      setProvider(matchedProvider.value)
+    }
+  }
+
   return (
     <div className="w-full max-w-full overflow-hidden">
       <div className="px-2 sm:px-0">
@@ -148,10 +183,9 @@ export const OpenAIApp = () => {
                     })
                     return
                   }
-
+                  form.resetFields()
                   setEditingConfig(null)
                   setOpen(true)
-                  form.resetFields()
                 }}
                 className="inline-flex items-center justify-center rounded-md border border-transparent bg-black px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-white dark:text-gray-800 dark:hover:bg-gray-100 dark:focus:ring-gray-500 dark:focus:ring-offset-gray-100 disabled:opacity-50 w-full sm:w-auto">
                 {t("addBtn")}
@@ -182,59 +216,72 @@ export const OpenAIApp = () => {
             {
               title: t("table.actions"),
               key: "actions",
-              render: (_, record) => (
-                <div className="flex gap-2 sm:gap-4 justify-start">
-                  <Tooltip title={t("edit")}>
-                    <button
-                      className="text-gray-700 dark:text-gray-400 disabled:opacity-50 p-1"
-                      disabled={isFireFoxPrivateMode}
-                      onClick={() => handleEdit(record)}>
-                      <Pencil className="size-4" />
-                    </button>
-                  </Tooltip>
+              render: (_, record) => {
+                const isEnabled = providerStates[record.id] ?? true
+                return (
+                  <div className="flex gap-2 sm:gap-4 justify-start items-center">
+                    <Tooltip title={isEnabled ? "Disable provider" : "Enable provider"}>
+                      <Switch
+                        checked={isEnabled}
+                        size="small"
+                        disabled={isFireFoxPrivateMode}
+                        onChange={(checked) => {
+                          handleToggleProvider(record.id, checked)
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t("edit")}>
+                      <button
+                        className="text-gray-700 dark:text-gray-400 disabled:opacity-50 p-1"
+                        disabled={isFireFoxPrivateMode}
+                        onClick={() => handleEdit(record)}>
+                        <Pencil className="size-4" />
+                      </button>
+                    </Tooltip>
 
-                  <Tooltip
-                    title={
-                      !noPopupProvider.includes(record.provider)
-                        ? t("newModel")
-                        : t("noNewModel")
-                    }>
-                    <button
-                      className="text-gray-700 dark:text-gray-400 disabled:opacity-50 p-1"
-                      onClick={() => {
-                        setOpenModelModal(true)
-                        setOpenaiId(record.id)
-                      }}
-                      disabled={
-                        !record.id ||
-                        noPopupProvider.includes(record.provider) ||
-                        isFireFoxPrivateMode
+                    <Tooltip
+                      title={
+                        !noPopupProvider.includes(record.provider)
+                          ? t("newModel")
+                          : t("noNewModel")
                       }>
-                      <DownloadIcon className="size-4" />
-                    </button>
-                  </Tooltip>
+                      <button
+                        className="text-gray-700 dark:text-gray-400 disabled:opacity-50 p-1"
+                        onClick={() => {
+                          setOpenModelModal(true)
+                          setOpenaiId(record.id)
+                        }}
+                        disabled={
+                          !record.id ||
+                          noPopupProvider.includes(record.provider) ||
+                          isFireFoxPrivateMode
+                        }>
+                        <DownloadIcon className="size-4" />
+                      </button>
+                    </Tooltip>
 
-                  <Tooltip title={t("delete")}>
-                    <button
-                      className="text-red-500 dark:text-red-400 disabled:opacity-50 p-1"
-                      disabled={isFireFoxPrivateMode}
-                      onClick={() => {
-                        // add confirmation here
-                        if (
-                          confirm(
-                            t("modal.deleteConfirm", {
-                              name: record.name
-                            })
-                          )
-                        ) {
-                          handleDelete(record.id)
-                        }
-                      }}>
-                      <Trash2 className="size-4" />
-                    </button>
-                  </Tooltip>
-                </div>
-              )
+                    <Tooltip title={t("delete")}>
+                      <button
+                        className="text-red-500 dark:text-red-400 disabled:opacity-50 p-1"
+                        disabled={isFireFoxPrivateMode}
+                        onClick={() => {
+                          // add confirmation here
+                          if (
+                            confirm(
+                              t("modal.deleteConfirm", {
+                                name: record.name
+                              })
+                            )
+                          ) {
+                            handleDelete(record.id)
+                          }
+                        }}>
+                        <Trash2 className="size-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                )
+              }
             }
           ]}
           dataSource={configs}
@@ -249,10 +296,10 @@ export const OpenAIApp = () => {
           open={open}
           title={editingConfig ? t("modal.titleEdit") : t("modal.titleAdd")}
           onCancel={() => {
+            form.resetFields()
             setOpen(false)
             setEditingConfig(null)
             setProvider("custom")
-            form.resetFields()
           }}
           footer={null}>
           {!editingConfig && (
@@ -425,8 +472,7 @@ export const OpenAIApp = () => {
           open={openModelModal}
           title={t("modal.model.title")}
           footer={null}
-          onCancel={() => setOpenModelModal(false)}
-  >
+          onCancel={() => setOpenModelModal(false)}>
           {openaiId ? (
             <OpenAIFetchModel
               openaiId={openaiId}
