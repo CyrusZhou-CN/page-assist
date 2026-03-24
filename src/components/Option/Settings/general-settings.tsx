@@ -131,12 +131,15 @@ export const GeneralSettings = () => {
     "enableMessageQueue",
     false
   )
+
+  const [showMcpServersInChat, setShowMcpServersInChat] = useStorage(
+    "showMcpServersInChat",
+    true
+  )
   const [optimizeQueueForSmallScreen, setOptimizeQueueForSmallScreen] =
     useStorage("optimizeQueueForSmallScreen", false)
 
   const [tableTextWrap, setTableTextWrap] = useStorage("tableTextWrap", false)
-
-  const [enableMemory, setEnableMemory] = useStorage("enableMemory", false)
 
   const [showMoreForLargeMessage, setShowMoreForLargeMessage] = useStorage(
     "showMoreForLargeMessage",
@@ -575,23 +578,6 @@ export const GeneralSettings = () => {
 
       <div className="flex flex-row justify-between">
         <div className="inline-flex items-center gap-2">
-          <BetaTag />
-          <span className="text-gray-700   dark:text-neutral-50">
-            {t(
-              "generalSettings.settings.enableMemory.label",
-              "Enable Memory (Experimental)"
-            )}
-          </span>
-        </div>
-
-        <Switch
-          checked={enableMemory}
-          onChange={(checked) => setEnableMemory(checked)}
-        />
-      </div>
-
-      <div className="flex flex-row justify-between">
-        <div className="inline-flex items-center gap-2">
           <span className="text-gray-700   dark:text-neutral-50">
             {t("generalSettings.settings.showMoreForLargeMessage.label")}
           </span>
@@ -656,6 +642,22 @@ export const GeneralSettings = () => {
         <Switch
           checked={optimizeQueueForSmallScreen}
           onChange={(checked) => setOptimizeQueueForSmallScreen(checked)}
+        />
+      </div>
+
+      <div className="flex flex-row justify-between">
+        <div className="inline-flex items-center gap-2">
+          <span className="text-gray-700   dark:text-neutral-50">
+            {t(
+              "generalSettings.settings.showMcpServersInChat.label",
+              "Show MCP Servers Toggle in Chat"
+            )}
+          </span>
+        </div>
+
+        <Switch
+          checked={showMcpServersInChat}
+          onChange={(checked) => setShowMcpServersInChat(checked)}
         />
       </div>
 
