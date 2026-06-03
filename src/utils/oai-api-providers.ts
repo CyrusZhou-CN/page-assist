@@ -5,6 +5,11 @@ export const OAI_API_PROVIDERS = [
     baseUrl: ""
   },
   {
+    label: "Atlas Cloud",
+    value: "atlascloud",
+    baseUrl: "https://api.atlascloud.ai/v1"
+  },
+  {
     label: "LLaMa.cpp",
     value: "llamacpp",
     baseUrl: "http://localhost:8080/v1"
@@ -143,5 +148,10 @@ export const OAI_API_PROVIDERS = [
     label: 'MiniMax',
     value: 'minimax',
     baseUrl: 'https://api.minimax.io/v1'
+  },
+  {
+    label: 'Xiaomi Mimo',
+    value: 'xiaomimimo',
+    baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1'
   }
 ]
