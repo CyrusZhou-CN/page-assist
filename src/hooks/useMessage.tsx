@@ -52,6 +52,10 @@ import {
 import { updatePageTitle } from "@/utils/update-page-title"
 import { getNoOfRetrievedDocs } from "@/services/app"
 import { normalChatMode as sharedNormalChatMode } from "./chat-modes/normalChatMode"
+import { pageActionChatMode } from "./chat-modes/pageActionChatMode"
+import { webMcpChatMode } from "./chat-modes/webMcpChatMode"
+import { tabChatMode } from "./chat-modes/tabChatMode"
+import { ChatDocuments } from "@/models/ChatTypes"
 
 export const useMessage = () => {
   const {
@@ -69,12 +73,16 @@ export const useMessage = () => {
     setIsSearchingInternet,
     webSearch,
     setWebSearch,
+    pageAction,
+    webMcp,
     isSearchingInternet,
     temporaryChat,
     setTemporaryChat,
     actionInfo,
     setActionInfo,
-    setPendingMcpApproval
+    setPendingMcpApproval,
+    documentContext,
+    setDocumentContext
   } = useStoreMessageOption()
   const [defaultInternetSearchOn] = useStorage("defaultInternetSearchOn", false)
 
@@ -145,6 +153,7 @@ export const useMessage = () => {
     }
     setActionInfo(null)
     setPendingMcpApproval(null)
+    setDocumentContext(null)
   }
 
   const saveMessageOnSuccess = createSaveMessageOnSuccess(
@@ -204,6 +213,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: false,
+          createdAt: Date.now(),
           name: "You",
           message,
           sources: [],
@@ -211,6 +221,7 @@ export const useMessage = () => {
         },
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -224,6 +235,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -379,7 +391,7 @@ export const useMessage = () => {
         useOCR
       })
 
-      const applicationChatHistory = generateHistory(history, selectedModel)
+      const applicationChatHistory = await generateHistory(history, selectedModel)
 
       let generationInfo: any | undefined = undefined
 
@@ -475,11 +487,13 @@ export const useMessage = () => {
         ...history,
         {
           role: "user",
+          createdAt: Date.now(),
           content: message,
           image,
         },
         {
           role: "assistant",
+          createdAt: Date.now(),
           content: fullText
         }
       ])
@@ -558,6 +572,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: false,
+          createdAt: Date.now(),
           name: "You",
           message,
           sources: [],
@@ -565,6 +580,7 @@ export const useMessage = () => {
         },
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -578,6 +594,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -730,10 +747,12 @@ export const useMessage = () => {
         ...history,
         {
           role: "user",
+          createdAt: Date.now(),
           content: message
         },
         {
           role: "assistant",
+          createdAt: Date.now(),
           content: fullText
         }
       ])
@@ -826,6 +845,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: false,
+          createdAt: Date.now(),
           name: "You",
           message,
           sources: [],
@@ -833,6 +853,7 @@ export const useMessage = () => {
         },
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -846,6 +867,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -890,7 +912,7 @@ export const useMessage = () => {
         })
       }
 
-      const applicationChatHistory = generateHistory(history, selectedModel)
+      const applicationChatHistory = await generateHistory(history, selectedModel)
 
       if (prompt && !selectedPrompt) {
         applicationChatHistory.unshift(
@@ -1001,12 +1023,14 @@ export const useMessage = () => {
         ...history,
         {
           role: "user",
+          createdAt: Date.now(),
           content: message,
           image,
           images: processedImages
         },
         {
           role: "assistant",
+          createdAt: Date.now(),
           content: fullText
         }
       ])
@@ -1094,6 +1118,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: false,
+          createdAt: Date.now(),
           name: "You",
           message,
           sources: [],
@@ -1101,6 +1126,7 @@ export const useMessage = () => {
         },
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -1114,6 +1140,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -1219,7 +1246,7 @@ export const useMessage = () => {
         })
       }
 
-      const applicationChatHistory = generateHistory(history, selectedModel)
+      const applicationChatHistory = await generateHistory(history, selectedModel)
 
       if (prompt) {
         applicationChatHistory.unshift(
@@ -1323,12 +1350,14 @@ export const useMessage = () => {
         ...history,
         {
           role: "user",
+          createdAt: Date.now(),
           content: message,
           image,
           images: processedImages
         },
         {
           role: "assistant",
+          createdAt: Date.now(),
           content: fullText
         }
       ])
@@ -1416,6 +1445,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: false,
+          createdAt: Date.now(),
           name: "You",
           message,
           sources: [],
@@ -1424,6 +1454,7 @@ export const useMessage = () => {
         },
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -1437,6 +1468,7 @@ export const useMessage = () => {
         ...messages,
         {
           isBot: true,
+          createdAt: Date.now(),
           name: selectedModel,
           message: "▋",
           sources: [],
@@ -1569,6 +1601,7 @@ export const useMessage = () => {
         ...history,
         {
           role: "user",
+          createdAt: Date.now(),
           content: message,
           image,
           messageType,
@@ -1576,6 +1609,7 @@ export const useMessage = () => {
         },
         {
           role: "assistant",
+          createdAt: Date.now(),
           content: fullText
         }
       ])
@@ -1635,7 +1669,8 @@ export const useMessage = () => {
     memory,
     messages: chatHistory,
     messageType,
-    chatType
+    chatType,
+    docs
   }: {
     message: string
     image: string
@@ -1646,6 +1681,7 @@ export const useMessage = () => {
     controller?: AbortController
     messageType?: string
     chatType?: string
+    docs?: ChatDocuments
   }) => {
     let signal: AbortSignal
     if (!controller) {
@@ -1686,9 +1722,111 @@ export const useMessage = () => {
         images
       )
     } else {
+      const tabDocs = docs?.length > 0 ? docs : documentContext || []
+      if (tabDocs.length > 0 && chatMode === "normal") {
+        if (docs?.length > 0) {
+          setDocumentContext(
+            Array.from(new Set([...(documentContext || []), ...docs]))
+          )
+        }
+        setStreaming(true)
+        try {
+          await tabChatMode(
+            message,
+            image,
+            tabDocs,
+            isRegenerate,
+            chatHistory || messages,
+            memory || history,
+            signal,
+            {
+              selectedModel,
+              useOCR,
+              selectedSystemPrompt,
+              currentChatModelSettings,
+              setMessages,
+              saveMessageOnSuccess,
+              saveMessageOnError,
+              setHistory,
+              setIsProcessing,
+              setStreaming,
+              setAbortController,
+              historyId,
+              setHistoryId
+            }
+          )
+        } catch (e: any) {
+          notification.error({
+            message: t("error"),
+            description: e?.message || t("somethingWentWrong")
+          })
+          setIsProcessing(false)
+          setStreaming(false)
+        }
+        return
+      }
       if (chatMode === "normal") {
         const useAgentWebSearch = webSearch && enableAgentWebSearch
-        if (webSearch && !useAgentWebSearch) {
+        if (pageAction) {
+          await pageActionChatMode(
+            message,
+            image,
+            isRegenerate,
+            chatHistory || messages,
+            memory || history,
+            signal,
+            {
+              selectedModel,
+              useOCR,
+              selectedSystemPrompt,
+              currentChatModelSettings,
+              setMessages,
+              saveMessageOnSuccess,
+              saveMessageOnError,
+              setHistory,
+              setIsProcessing,
+              setStreaming,
+              setAbortController,
+              historyId,
+              setHistoryId,
+              images,
+              setActionInfo,
+              temporaryChat,
+              messageSource: "copilot",
+              requireMcpApproval: mcpHumanInLoop,
+              includeWebMcp: webMcp
+            }
+          )
+        } else if (webMcp) {
+          await webMcpChatMode(
+            message,
+            image,
+            isRegenerate,
+            chatHistory || messages,
+            memory || history,
+            signal,
+            {
+              selectedModel,
+              useOCR,
+              selectedSystemPrompt,
+              currentChatModelSettings,
+              setMessages,
+              saveMessageOnSuccess,
+              saveMessageOnError,
+              setHistory,
+              setIsProcessing,
+              setStreaming,
+              setAbortController,
+              historyId,
+              setHistoryId,
+              images,
+              setActionInfo,
+              temporaryChat,
+              messageSource: "copilot",
+              requireMcpApproval: mcpHumanInLoop
+            }
+          )
+        } else if (webSearch && !useAgentWebSearch) {
           await searchChatMode(
             message,
             image,

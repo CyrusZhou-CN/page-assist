@@ -45,7 +45,10 @@ export const normalChatMode = async (
     temporaryChat,
     requireMcpApproval,
     messageSource,
-    webSearchAsTool
+    webSearchAsTool,
+    extraMcpServers,
+    extraSystemPrompt,
+    normalizeMcpToolCallArgs
   }: {
     selectedModel: string
     useOCR: boolean
@@ -67,6 +70,9 @@ export const normalChatMode = async (
     requireMcpApproval?: boolean
     messageSource?: "copilot" | "web-ui"
     webSearchAsTool?: boolean
+    extraMcpServers?: any[]
+    extraSystemPrompt?: string
+    normalizeMcpToolCallArgs?: (toolName: string, args: unknown) => unknown
   }
 ) => {
   console.log("Using normalChatMode")
@@ -96,7 +102,10 @@ export const normalChatMode = async (
         temporaryChat,
         requireMcpApproval,
         messageSource,
-        webSearchAsTool
+        webSearchAsTool,
+        extraMcpServers,
+        extraSystemPrompt,
+        normalizeMcpToolCallArgs
       }
     )
 
@@ -175,6 +184,7 @@ export const normalChatMode = async (
       ...messages,
       {
         isBot: false,
+        createdAt: Date.now(),
         name: "You",
         message,
         sources: [],
@@ -190,6 +200,7 @@ export const normalChatMode = async (
       },
       {
         isBot: true,
+        createdAt: Date.now(),
         name: selectedModel,
         message: "▋",
         sources: [],
@@ -203,6 +214,7 @@ export const normalChatMode = async (
       ...messages,
       {
         isBot: true,
+        createdAt: Date.now(),
         name: selectedModel,
         message: "▋",
         sources: [],
@@ -245,7 +257,7 @@ export const normalChatMode = async (
       useOCR: useOCR
     })
 
-    const applicationChatHistory = generateHistory(history, selectedModel)
+    const applicationChatHistory = await generateHistory(history, selectedModel)
 
     if (prompt && !selectedPrompt) {
       applicationChatHistory.unshift(
@@ -375,12 +387,14 @@ export const normalChatMode = async (
       ...history,
       {
         role: "user",
+        createdAt: Date.now(),
         content: message,
         image: imagesToSave.length > 0 ? imagesToSave[0] : undefined,
         images: imagesToSave.length > 0 ? imagesToSave : undefined
       },
       {
         role: "assistant",
+        createdAt: Date.now(),
         content: fullText
       }
     ])
