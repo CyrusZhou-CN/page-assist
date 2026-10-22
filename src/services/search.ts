@@ -115,6 +115,16 @@ export const getPerplexityApiKey = async () => {
   return perplexityApiKey || ""
 }
 
+export const getSerplyApiKey = async () => {
+  const serplyApiKey = await storage2.get("serplyApiKey")
+  return serplyApiKey || ""
+}
+
+export const getSofyaApiKey = async () => {
+  const sofyaApiKey = await storage2.get("sofyaApiKey")
+  return sofyaApiKey || ""
+}
+
 export const getTavilyApiKey = async () => {
   const tavilyApiKey = await storage2.get("tavilyApiKey")
   return tavilyApiKey || ""
@@ -139,6 +149,14 @@ export const setKagiApiKey = async (kagiApiKey: string) => {
 
 export const setPerplexityApiKey = async (perplexityApiKey: string) => {
   await storage2.set("perplexityApiKey", perplexityApiKey)
+}
+
+export const setSerplyApiKey = async (serplyApiKey: string) => {
+  await storage2.set("serplyApiKey", serplyApiKey)
+}
+
+export const setSofyaApiKey = async (sofyaApiKey: string) => {
+  await storage2.set("sofyaApiKey", sofyaApiKey)
 }
 
 export const setFirecrawlAPIKey = async (firecrawlAPIKey: string) => {
@@ -228,6 +246,8 @@ export const getSearchSettings = async () => {
     ollamaSearchApiKey,
     kagiApiKey,
     perplexityApiKey,
+    serplyApiKey,
+    sofyaApiKey,
     domainFilterList,
     blockedDomainList
   ] = await Promise.all([
@@ -247,6 +267,8 @@ export const getSearchSettings = async () => {
     getOllamaSearchApiKey(),
     getKagiApiKey(),
     getPerplexityApiKey(),
+    getSerplyApiKey(),
+    getSofyaApiKey(),
     getDomainFilterList(),
     getBlockedDomainList()
   ])
@@ -268,6 +290,8 @@ export const getSearchSettings = async () => {
     ollamaSearchApiKey,
     kagiApiKey,
     perplexityApiKey,
+    serplyApiKey,
+    sofyaApiKey,
     domainFilterList,
     blockedDomainList
   }
@@ -290,6 +314,8 @@ export const setSearchSettings = async ({
   ollamaSearchApiKey,
   kagiApiKey,
   perplexityApiKey,
+  serplyApiKey,
+  sofyaApiKey,
   domainFilterList,
   blockedDomainList
 }: {
@@ -309,6 +335,8 @@ export const setSearchSettings = async ({
   ollamaSearchApiKey: string
   kagiApiKey: string
   perplexityApiKey: string
+  serplyApiKey: string
+  sofyaApiKey: string
   domainFilterList: string[]
   blockedDomainList: string[]
 }) => {
@@ -329,6 +357,8 @@ export const setSearchSettings = async ({
     setOllamaSearchApiKey(ollamaSearchApiKey),
     setKagiApiKey(kagiApiKey),
     setPerplexityApiKey(perplexityApiKey),
+    setSerplyApiKey(serplyApiKey),
+    setSofyaApiKey(sofyaApiKey),
     setDomainFilterList(domainFilterList),
     setBlockedDomainList(blockedDomainList)
   ])

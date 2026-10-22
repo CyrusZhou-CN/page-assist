@@ -33,6 +33,7 @@ import { CanopyWaveIcon } from "../Icons/CanopyWaveIcon"
 import { MiniMaxIcon } from "../Icons/MiniMaxIcon"
 import { XiaomiMimoIcon } from "../Icons/XiaomiMimo"
 import { EvolinkIcon } from "../Icons/EvolinkIcon"
+import { AIHubMixIcon } from "../Icons/AIHubMix"
 
 export const ProviderIcons = ({
   provider,
@@ -57,6 +58,7 @@ export const ProviderIcons = ({
     // No llmman mark available, so fall back to the same neutral icon as
     // "custom" rather than the default branch, which would show another
     // provider's logo.
+    case "api-route":
     case "llmman":
       return <CpuIcon className={className} />
     case "openai":
@@ -119,6 +121,13 @@ export const ProviderIcons = ({
       return <XiaomiMimoIcon className={className} />
     case "evolink":
       return <EvolinkIcon className={className} />
+    case "aihubmix":
+      return <AIHubMixIcon className={className} />
+    // No WebWright brand mark is available yet, so fall back to the same
+    // neutral icon as "custom" rather than the default branch, which would
+    // show another provider's logo.
+    case "webwright":
+      return <CpuIcon className={className} />
     default:
       return <OllamaIcon className={className} />
   }

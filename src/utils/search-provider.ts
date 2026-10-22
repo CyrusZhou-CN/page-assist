@@ -62,5 +62,13 @@ export const SUPPORTED_SEARCH_PROVIDERS = [
     {
         label: "Perplexity Search API",
         value: "perplexity-api"
+    },
+    {
+        label: "Serply Search API",
+        value: "serply-api"
+    },
+    {
+        label: "Sofya Search API",
+        value: "sofya-api"
     }
 ]
